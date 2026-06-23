@@ -1,0 +1,110 @@
+:root {
+  color: #172033;
+  background: #f5f7fb;
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background: #f5f7fb;
+}
+
+.sidebar {
+  background: #101828;
+  color: #fff;
+  padding: 24px 18px;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.brand img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.brand strong { display: block; font-size: 19px; }
+.brand span { display: block; color: #b8c4d8; font-size: 12px; margin-top: 3px; }
+
+nav { display: grid; gap: 8px; }
+nav a {
+  padding: 12px 14px;
+  color: #c8d3e5;
+  border-radius: 10px;
+  cursor: default;
+}
+nav a.active, nav a:hover { background: #1d4ed8; color: #fff; }
+
+.content { padding: 28px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 8px; font-size: 30px; }
+.topbar p { color: #667085; margin-bottom: 0; }
+
+.primary {
+  border: 0;
+  background: #2563eb;
+  color: white;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-weight: 700;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.card, .panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(16, 24, 40, 0.05);
+}
+
+.card { padding: 20px; }
+.card h2 { font-size: 17px; margin-bottom: 8px; }
+.card p { color: #667085; line-height: 1.55; margin-bottom: 0; }
+.card.accent { border-color: #93c5fd; background: #eff6ff; }
+
+.panel { overflow: hidden; }
+.panel-title {
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #eef2f7;
+}
+.panel-title h2 { font-size: 18px; margin: 0; }
+.panel-title span { color: #667085; }
+
+.table { display: grid; }
+.row {
+  display: grid;
+  grid-template-columns: 80px 1.5fr 1fr 100px 130px 100px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #eef2f7;
+  align-items: center;
+  gap: 12px;
+}
+.row.header { background: #f8fafc; color: #475467; font-weight: 700; }
+.row.empty { color: #98a2b3; }

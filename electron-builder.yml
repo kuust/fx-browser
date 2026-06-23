@@ -1,0 +1,23 @@
+appId: com.fuxin.fxbrowser
+productName: FX Browser
+copyright: Copyright © 2026 FX Browser
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+  - assets/**
+directories:
+  buildResources: assets
+  output: release
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "FX-Browser-${version}-Setup.${ext}"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

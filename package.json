@@ -1,0 +1,36 @@
+{
+  "name": "fx-browser",
+  "version": "0.1.0",
+  "description": "FX Browser - Windows personal browser environment manager with MoreLogin import support.",
+  "private": true,
+  "main": "dist-electron/main/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:electron": "concurrently -k \"npm:dev\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "tsc -p tsconfig.json && vite build && npm run build:main",
+    "build:main": "tsc -p tsconfig.electron.json",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "package:win": "npm run build && electron-builder --win --x64",
+    "lint:security": "node scripts/check-no-sensitive-files.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "electron": "latest",
+    "electron-builder": "latest",
+    "concurrently": "latest",
+    "wait-on": "latest",
+    "cross-env": "latest",
+    "vitest": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest"
+  }
+}

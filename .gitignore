@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.npm/
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-electron/
+release/
+out/
+build/
+*.tsbuildinfo
+
+# Runtime data - never commit real browser/user data
+data/
+profiles/
+cookies/
+secrets/
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Sensitive imports / exports - never commit MoreLogin data
+export_profile.txt
+export_profile.xlsx
+*export_profile*.txt
+*export_profile*.xlsx
+*.cookies.json
+*.cookie.json
+import_report*.json
+real-fixtures/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
