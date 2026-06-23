@@ -1,10 +1,20 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseMoreLoginExportText } from './morelogin-importer.js';
+import { FxBrowserStore } from './fx-store.js';
+import { importMoreLoginFile } from './import-morelogin-file.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+let store: FxBrowserStore;
+
+function getStore(): FxBrowserStore {
+  if (!store) {
+    store = new FxBrowserStore(path.join(app.getPath('userData'), 'data'));
+  }
+  return store;
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -28,8 +38,30 @@ function createWindow() {
   }
 }
 
-ipcMain.handle('fx:parse-morelogin-text', (_event, text: string) => {
-  return parseMoreLoginExportText(text);
+ipcMain.handle('fx:list-environments', () => {
+  return getStore().listEnvironments();
+});
+
+ipcMain.handle('fx:get-last-import-summary', () => {
+  return getStore().getLastImportSummary();
+});
+
+ipcMain.handle('fx:import-morelogin-file', async () => {
+  const result = await dialog.showOpenDialog({
+    title: '选择 MoreLogin 导出的 export_profile.txt',
+    properties: ['openFile'],
+    filters: [
+      { name: 'MoreLogin TXT Export', extensions: ['txt'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { canceled: true };
+  }
+
+  const imported = importMoreLoginFile(result.filePaths[0], getStore());
+  return { canceled: false, ...imported };
 });
 
 app.whenReady().then(() => {

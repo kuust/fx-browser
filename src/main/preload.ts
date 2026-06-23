@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('fxBrowser', {
-  parseMoreLoginText: (text: string) => ipcRenderer.invoke('fx:parse-morelogin-text', text),
+  listEnvironments: () => ipcRenderer.invoke('fx:list-environments'),
+  getLastImportSummary: () => ipcRenderer.invoke('fx:get-last-import-summary'),
+  importMoreLoginFile: () => ipcRenderer.invoke('fx:import-morelogin-file'),
 });
