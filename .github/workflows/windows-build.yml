@@ -32,18 +32,29 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
+          if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+            $PSNativeCommandUseErrorActionPreference = $false
+          }
+
           npm run package:win
           $buildExit = $LASTEXITCODE
+
           if (Test-Path release) {
             Get-ChildItem release -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
           }
+
           $installer = Get-ChildItem release -Filter *.exe -File -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installer) {
-            exit $buildExit
+            Write-Error "No Windows .exe installer was produced. electron-builder exit code: $buildExit"
+            exit $(if ($buildExit -ne 0) { $buildExit } else { 1 })
           }
+
+          Write-Host "Windows installer produced: $($installer.FullName) ($($installer.Length) bytes)"
           if ($buildExit -ne 0) {
-            Write-Warning "electron-builder exited with code $buildExit after producing $($installer.FullName); continuing so the installer artifact can be uploaded."
+            Write-Warning "electron-builder exited with code $buildExit after producing the .exe; continuing so the installer artifact can be uploaded."
           }
+          exit 0
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           DEBUG: electron-builder
