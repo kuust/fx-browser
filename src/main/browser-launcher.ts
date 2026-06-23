@@ -7,11 +7,13 @@ export type BrowserLaunchPlanInput = {
   appUserDataDir: string;
   environment: EnvironmentListItem;
   browserProxyServer?: string | null;
+  remoteDebuggingPort?: number | null;
 };
 
 export type BrowserLaunchPlan = {
   executablePath: string;
   profileUserDataDir: string;
+  initialUrl: string;
   args: string[];
 };
 
@@ -30,8 +32,20 @@ function proxySchemeFromRaw(raw: string): 'http' | 'https' | 'socks5' {
   return (match?.[1]?.toLowerCase() as 'http' | 'https' | 'socks5') ?? 'http';
 }
 
+function initialUrlFromEnvironment(environment: EnvironmentListItem): string {
+  const raw = environment.platformDomain.trim();
+  if (!raw) return 'about:blank';
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    return new URL(withScheme).toString();
+  } catch {
+    return 'about:blank';
+  }
+}
+
 export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLaunchPlan {
   const profileUserDataDir = path.join(input.appUserDataDir, 'profiles', input.environment.environmentId, 'user_data');
+  const initialUrl = initialUrlFromEnvironment(input.environment);
   const args = [
     `--user-data-dir=${normalizeForChromiumArg(profileUserDataDir)}`,
     '--no-first-run',
@@ -44,6 +58,10 @@ export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLa
     args.push(`--user-agent=${input.environment.userAgent.trim()}`);
   }
 
+  if (input.remoteDebuggingPort) {
+    args.push(`--remote-debugging-port=${input.remoteDebuggingPort}`);
+  }
+
   if (input.browserProxyServer) {
     args.push(`--proxy-server=${input.browserProxyServer}`);
   } else if (input.environment.proxyHost && input.environment.proxyPort) {
@@ -51,9 +69,12 @@ export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLa
     args.push(`--proxy-server=${scheme}://${input.environment.proxyHost}:${input.environment.proxyPort}`);
   }
 
+  args.push(initialUrl);
+
   return {
     executablePath: input.executablePath,
     profileUserDataDir,
+    initialUrl,
     args,
   };
 }

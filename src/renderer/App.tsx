@@ -13,6 +13,13 @@ function chromeVersion(ua: string) {
   return ua.match(/Chrome\/(\d+)/)?.[1] ?? '—';
 }
 
+function cookieStatusText(env: EnvironmentListItem) {
+  if (env.cookieImportStatus === 'imported') return '已导入';
+  if (env.cookieImportStatus === 'pending') return '待首次导入';
+  if (env.cookieImportStatus === 'failed') return `失败 ${env.cookieImportError || ''}`;
+  return '无 Cookie';
+}
+
 function App() {
   const [environments, setEnvironments] = useState<EnvironmentListItem[]>([]);
   const [summary, setSummary] = useState<SavedImportSummary | null>(null);
@@ -100,6 +107,19 @@ function App() {
     }
   }
 
+  async function handleResetCookieImport(environmentId: string) {
+    setLoading(true);
+    try {
+      const result = await window.fxBrowser.resetCookieImport(environmentId);
+      setEnvironments(result.environments);
+      setMessage(`已将 ${environmentId} 的 Cookie 状态重置为待导入，下次启动会重新注入一次`);
+    } catch (error) {
+      setMessage(`重置 Cookie 状态失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const groupedCount = useMemo(() => {
     const groups = new Set(environments.map((item) => item.profileGroup || '未分组'));
     return groups.size;
@@ -171,11 +191,12 @@ function App() {
                 <span title={env.profileName}>{maskEmail(env.profileName)}</span>
                 <span>{env.profileGroup || '未分组'}</span>
                 <span title={env.proxyRaw}>{env.proxyHost ? `${env.proxyHost}:${env.proxyPort ?? ''}` : '无代理'}<br /><small>{proxyResults[env.environmentId] ?? '未检测'}</small></span>
-                <span>{env.cookieCount}</span>
+                <span>{env.cookieCount}<br /><small>{cookieStatusText(env)}</small></span>
                 <span>Chrome {chromeVersion(env.userAgent)}</span>
                 <span className="status">{env.status === 'running' ? '运行中' : '未启动'}</span>
                 <span className="actions">
                   <button className="secondary" onClick={() => void handleCheckProxy(env.environmentId)} disabled={loading}>检测</button>
+                  <button className="secondary" onClick={() => void handleResetCookieImport(env.environmentId)} disabled={loading || env.cookieCount === 0}>重导Cookie</button>
                   {env.status === 'running' ? (
                     <button className="secondary" onClick={() => void handleStop(env.environmentId)} disabled={loading}>停止</button>
                   ) : (

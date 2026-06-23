@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('fxBrowser', {
   startEnvironment: (environmentId: string) => ipcRenderer.invoke('fx:start-environment', environmentId),
   stopEnvironment: (environmentId: string) => ipcRenderer.invoke('fx:stop-environment', environmentId),
   checkProxy: (environmentId: string) => ipcRenderer.invoke('fx:check-proxy', environmentId),
+  resetCookieImport: (environmentId: string) => ipcRenderer.invoke('fx:reset-cookie-import', environmentId),
 });

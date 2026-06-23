@@ -28,11 +28,13 @@
     "undici": "^8.5.0",
     "vite": "latest",
     "vitest": "latest",
-    "wait-on": "latest"
+    "wait-on": "latest",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "@types/ws": "^8.18.1"
   }
 }

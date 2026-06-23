@@ -3,6 +3,8 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import type { EnvironmentListItem } from '../shared/store-types.js';
 import { buildBrowserLaunchPlan } from './browser-launcher.js';
 import { buildProxyBridgePlan, type ProxyBridgePlan } from './proxy-bridge.js';
+import { CdpCookieTransport } from './cdp-cookie-transport.js';
+import { importCookiesIntoBrowser, type CdpCookie, type CookieImportResult } from './cookie-importer.js';
 
 export type BrowserProcessResult = {
   status: 'started' | 'already-running' | 'stopped' | 'not-running';
@@ -17,6 +19,9 @@ export type BrowserProcessManagerOptions = {
   startProxyBridge?: (plan: Extract<ProxyBridgePlan, { mode: 'bridge' }>) => unknown | Promise<unknown>;
   stopProxyBridge?: (environmentId: string) => void;
   markStatus: (environmentId: string, status: EnvironmentListItem['status']) => void;
+  markCookieImportResult?: (environmentId: string, result: CookieImportResult) => void;
+  cookieImportDelayMs?: number;
+  createCookieTransport?: (debuggingPort: number) => { setCookies(cookies: CdpCookie[]): Promise<void> };
 };
 
 export class BrowserProcessManager {
@@ -28,6 +33,12 @@ export class BrowserProcessManager {
       detached: false,
       stdio: 'ignore',
     }));
+  }
+
+  private debuggingPortFor(environmentId: string): number {
+    const match = environmentId.match(/(\d+)$/);
+    const numericId = match ? Number(match[1]) : 0;
+    return 40_000 + (numericId % 10_000);
   }
 
   async start(environment: EnvironmentListItem): Promise<BrowserProcessResult> {
@@ -45,11 +56,13 @@ export class BrowserProcessManager {
       await this.options.startProxyBridge?.(proxyPlan);
     }
 
+    const remoteDebuggingPort = this.debuggingPortFor(environment.environmentId);
     const plan = buildBrowserLaunchPlan({
       executablePath,
       appUserDataDir: this.options.appUserDataDir,
       environment,
       browserProxyServer: proxyPlan.browserProxyServer,
+      remoteDebuggingPort,
     });
 
     mkdirSync(plan.profileUserDataDir, { recursive: true });
@@ -62,6 +75,21 @@ export class BrowserProcessManager {
       this.options.stopProxyBridge?.(environment.environmentId);
       this.options.markStatus(environment.environmentId, 'stopped');
     });
+
+    if (environment.cookieImportStatus === 'pending' || environment.cookieImportStatus === 'failed') {
+      const delayMs = this.options.cookieImportDelayMs ?? 2_000;
+      setTimeout(() => {
+        const transport = this.options.createCookieTransport?.(remoteDebuggingPort) ?? new CdpCookieTransport({ debuggingPort: remoteDebuggingPort });
+        void importCookiesIntoBrowser(environment, transport)
+          .then((cookieResult) => this.options.markCookieImportResult?.(environment.environmentId, cookieResult))
+          .catch((error) => this.options.markCookieImportResult?.(environment.environmentId, {
+            status: 'failed',
+            environmentId: environment.environmentId,
+            importedCount: 0,
+            message: (error as Error).message,
+          }));
+      }, delayMs);
+    }
 
     return { status: 'started', environmentId: environment.environmentId };
   }

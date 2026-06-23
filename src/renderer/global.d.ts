@@ -29,6 +29,7 @@ declare global {
       startEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
       stopEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
       checkProxy: (environmentId: string) => Promise<ProxyCheckUiResult>;
+      resetCookieImport: (environmentId: string) => Promise<{ environmentId: string; environments: EnvironmentListItem[] }>;
     };
   }
 }

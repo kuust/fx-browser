@@ -8,6 +8,7 @@ function makeEnv(overrides: Partial<EnvironmentListItem> = {}): EnvironmentListI
     importOrder: 1,
     profileName: 'alpha@example.com',
     platform: 'Google Accounts',
+    platformDomain: 'https://accounts.google.com',
     loginAccount: 'alpha@example.com',
     sourceProfileId: '1000000000000000001',
     proxyRaw: 'socks5://127.0.0.1:20000:user:pass',
@@ -19,6 +20,10 @@ function makeEnv(overrides: Partial<EnvironmentListItem> = {}): EnvironmentListI
     profileNote: '第一条',
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36',
     cookieCount: 1,
+    cookieRaw: '[{"name":"sid","value":"fake","domain":".example.com"}]',
+    cookieImportStatus: 'pending',
+    cookieImportedAt: null,
+    cookieImportError: '',
     status: 'stopped',
     ...overrides,
   };

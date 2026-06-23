@@ -89,12 +89,15 @@ describe('FxBrowserStore', () => {
         proxyHost: '127.0.0.1',
         proxyPort: 20000,
         cookieCount: 1,
+        cookieRaw: '[{"name":"sid","value":"fake","domain":".example.com"}]',
+        cookieImportStatus: 'pending',
       });
       expect(list[1]).toMatchObject({
         environmentId: 'env_000002',
         profileName: 'beta@example.com',
         proxyHost: '',
         cookieCount: 0,
+        cookieImportStatus: 'none',
       });
 
       store.markEnvironmentStatus('env_000001', 'running');

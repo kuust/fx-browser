@@ -1,8 +1,11 @@
+export type CookieImportStatus = 'none' | 'pending' | 'imported' | 'failed';
+
 export type EnvironmentListItem = {
   environmentId: string;
   importOrder: number;
   profileName: string;
   platform: string;
+  platformDomain: string;
   loginAccount: string;
   sourceProfileId: string;
   proxyRaw: string;
@@ -14,6 +17,10 @@ export type EnvironmentListItem = {
   profileNote: string;
   userAgent: string;
   cookieCount: number;
+  cookieRaw: string;
+  cookieImportStatus: CookieImportStatus;
+  cookieImportedAt: string | null;
+  cookieImportError: string;
   status: 'stopped' | 'running';
 };
 

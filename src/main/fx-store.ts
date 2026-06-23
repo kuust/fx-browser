@@ -54,6 +54,7 @@ export class FxBrowserStore {
         importOrder: profile.importOrder,
         profileName: profile.profileName,
         platform: profile.platform,
+        platformDomain: profile.userDefinedPlatformDomainName,
         loginAccount: profile.loginAccount,
         sourceProfileId: profile.sourceProfileId,
         proxyRaw: profile.proxyInformationRaw,
@@ -65,6 +66,10 @@ export class FxBrowserStore {
         profileNote: profile.profileNote,
         userAgent: profile.userAgent,
         cookieCount: profile.cookieCount,
+        cookieRaw: profile.cookieRaw,
+        cookieImportStatus: profile.cookieCount > 0 ? 'pending' : 'none',
+        cookieImportedAt: null,
+        cookieImportError: '',
         status: 'stopped',
       }));
 
@@ -90,6 +95,31 @@ export class FxBrowserStore {
     const environment = store.environments.find((item) => item.environmentId === environmentId);
     if (!environment) throw new Error(`Environment not found: ${environmentId}`);
     environment.status = status;
+    this.writeStore(store);
+  }
+
+  markCookieImportResult(environmentId: string, result: { status: 'imported' | 'skipped' | 'failed'; message: string }): void {
+    const store = this.readStore();
+    const environment = store.environments.find((item) => item.environmentId === environmentId);
+    if (!environment) throw new Error(`Environment not found: ${environmentId}`);
+    if (result.status === 'imported') {
+      environment.cookieImportStatus = 'imported';
+      environment.cookieImportedAt = new Date().toISOString();
+      environment.cookieImportError = '';
+    } else if (result.status === 'failed') {
+      environment.cookieImportStatus = 'failed';
+      environment.cookieImportError = result.message;
+    }
+    this.writeStore(store);
+  }
+
+  resetCookieImport(environmentId: string): void {
+    const store = this.readStore();
+    const environment = store.environments.find((item) => item.environmentId === environmentId);
+    if (!environment) throw new Error(`Environment not found: ${environmentId}`);
+    environment.cookieImportStatus = environment.cookieCount > 0 ? 'pending' : 'none';
+    environment.cookieImportedAt = null;
+    environment.cookieImportError = '';
     this.writeStore(store);
   }
 

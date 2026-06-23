@@ -48,6 +48,7 @@ function getBrowserManager(): BrowserProcessManager {
       startProxyBridge: (plan) => getProxyBridgeManager().start(plan),
       stopProxyBridge: (environmentId) => { void getProxyBridgeManager().stop(environmentId); },
       markStatus: (environmentId, status) => getStore().markEnvironmentStatus(environmentId, status),
+      markCookieImportResult: (environmentId, result) => getStore().markCookieImportResult(environmentId, result),
     });
   }
   return browserManager;
@@ -117,6 +118,11 @@ ipcMain.handle('fx:check-proxy', async (_event, environmentId: string) => {
   const environment = getStore().getEnvironment(environmentId);
   if (!environment) throw new Error(`环境不存在：${environmentId}`);
   return getProxyChecker().check(environment);
+});
+
+ipcMain.handle('fx:reset-cookie-import', (_event, environmentId: string) => {
+  getStore().resetCookieImport(environmentId);
+  return { environmentId, environments: getStore().listEnvironments() };
 });
 
 app.whenReady().then(() => {
