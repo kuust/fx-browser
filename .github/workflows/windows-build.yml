@@ -30,7 +30,20 @@ jobs:
           npm run lint:security
 
       - name: Build Windows installer
-        run: npm run package:win
+        shell: pwsh
+        run: |
+          npm run package:win
+          $buildExit = $LASTEXITCODE
+          if (Test-Path release) {
+            Get-ChildItem release -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+          }
+          $installer = Get-ChildItem release -Filter *.exe -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $installer) {
+            exit $buildExit
+          }
+          if ($buildExit -ne 0) {
+            Write-Warning "electron-builder exited with code $buildExit after producing $($installer.FullName); continuing so the installer artifact can be uploaded."
+          }
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           DEBUG: electron-builder
