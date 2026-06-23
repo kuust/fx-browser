@@ -11,6 +11,15 @@ type EnvironmentActionResult = {
   environments: EnvironmentListItem[];
 };
 
+type ProxyCheckUiResult = {
+  status: 'ok' | 'failed' | 'skipped';
+  environmentId: string;
+  proxyMode: 'none' | 'direct' | 'bridge';
+  proxyServer: string | null;
+  ip: string | null;
+  message: string;
+};
+
 declare global {
   interface Window {
     fxBrowser: {
@@ -19,6 +28,7 @@ declare global {
       importMoreLoginFile: () => Promise<ImportMoreLoginUiResult>;
       startEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
       stopEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
+      checkProxy: (environmentId: string) => Promise<ProxyCheckUiResult>;
     };
   }
 }

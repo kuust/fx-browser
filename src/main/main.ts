@@ -5,12 +5,16 @@ import { FxBrowserStore } from './fx-store.js';
 import { importMoreLoginFile } from './import-morelogin-file.js';
 import { BrowserProcessManager } from './browser-process-manager.js';
 import { findDefaultBrowserExecutable } from './browser-launcher.js';
+import { LocalProxyBridgeManager } from './local-proxy-bridge-manager.js';
+import { ProxyChecker } from './proxy-checker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let store: FxBrowserStore;
 let browserManager: BrowserProcessManager;
+let proxyBridgeManager: LocalProxyBridgeManager;
+let proxyChecker: ProxyChecker;
 
 function getStore(): FxBrowserStore {
   if (!store) {
@@ -19,11 +23,30 @@ function getStore(): FxBrowserStore {
   return store;
 }
 
+function getProxyBridgeManager(): LocalProxyBridgeManager {
+  if (!proxyBridgeManager) {
+    proxyBridgeManager = new LocalProxyBridgeManager();
+  }
+  return proxyBridgeManager;
+}
+
+function getProxyChecker(): ProxyChecker {
+  if (!proxyChecker) {
+    proxyChecker = new ProxyChecker({
+      startBridge: (plan) => getProxyBridgeManager().start(plan),
+      stopBridge: (environmentId) => getProxyBridgeManager().stop(environmentId),
+    });
+  }
+  return proxyChecker;
+}
+
 function getBrowserManager(): BrowserProcessManager {
   if (!browserManager) {
     browserManager = new BrowserProcessManager({
       appUserDataDir: app.getPath('userData'),
       executablePathProvider: () => findDefaultBrowserExecutable(),
+      startProxyBridge: (plan) => getProxyBridgeManager().start(plan),
+      stopProxyBridge: (environmentId) => { void getProxyBridgeManager().stop(environmentId); },
       markStatus: (environmentId, status) => getStore().markEnvironmentStatus(environmentId, status),
     });
   }
@@ -78,16 +101,22 @@ ipcMain.handle('fx:import-morelogin-file', async () => {
   return { canceled: false, ...imported };
 });
 
-ipcMain.handle('fx:start-environment', (_event, environmentId: string) => {
+ipcMain.handle('fx:start-environment', async (_event, environmentId: string) => {
   const environment = getStore().getEnvironment(environmentId);
   if (!environment) throw new Error(`环境不存在：${environmentId}`);
-  const result = getBrowserManager().start(environment);
+  const result = await getBrowserManager().start(environment);
   return { ...result, environments: getStore().listEnvironments() };
 });
 
 ipcMain.handle('fx:stop-environment', (_event, environmentId: string) => {
   const result = getBrowserManager().stop(environmentId);
   return { ...result, environments: getStore().listEnvironments() };
+});
+
+ipcMain.handle('fx:check-proxy', async (_event, environmentId: string) => {
+  const environment = getStore().getEnvironment(environmentId);
+  if (!environment) throw new Error(`环境不存在：${environmentId}`);
+  return getProxyChecker().check(environment);
 });
 
 app.whenReady().then(() => {

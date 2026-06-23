@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('fxBrowser', {
   importMoreLoginFile: () => ipcRenderer.invoke('fx:import-morelogin-file'),
   startEnvironment: (environmentId: string) => ipcRenderer.invoke('fx:start-environment', environmentId),
   stopEnvironment: (environmentId: string) => ipcRenderer.invoke('fx:stop-environment', environmentId),
+  checkProxy: (environmentId: string) => ipcRenderer.invoke('fx:check-proxy', environmentId),
 });

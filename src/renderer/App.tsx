@@ -17,6 +17,7 @@ function App() {
   const [environments, setEnvironments] = useState<EnvironmentListItem[]>([]);
   const [summary, setSummary] = useState<SavedImportSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [proxyResults, setProxyResults] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('等待导入 MoreLogin TXT');
 
   async function refresh() {
@@ -73,6 +74,27 @@ function App() {
       setMessage(result.status === 'not-running' ? `环境 ${environmentId} 未在运行` : `已停止环境 ${environmentId}`);
     } catch (error) {
       setMessage(`停止失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCheckProxy(environmentId: string) {
+    setLoading(true);
+    setProxyResults((prev) => ({ ...prev, [environmentId]: '检测中...' }));
+    try {
+      const result = await window.fxBrowser.checkProxy(environmentId);
+      const text = result.status === 'ok'
+        ? `成功 ${result.ip ?? ''}`
+        : result.status === 'skipped'
+          ? '无代理'
+          : `失败 ${result.message}`;
+      setProxyResults((prev) => ({ ...prev, [environmentId]: text }));
+      setMessage(`代理检测：${environmentId} ${text}`);
+    } catch (error) {
+      const text = `失败 ${(error as Error).message}`;
+      setProxyResults((prev) => ({ ...prev, [environmentId]: text }));
+      setMessage(`代理检测失败：${(error as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -148,11 +170,12 @@ function App() {
                 <span>#{env.importOrder}</span>
                 <span title={env.profileName}>{maskEmail(env.profileName)}</span>
                 <span>{env.profileGroup || '未分组'}</span>
-                <span title={env.proxyRaw}>{env.proxyHost ? `${env.proxyHost}:${env.proxyPort ?? ''}` : '无代理'}</span>
+                <span title={env.proxyRaw}>{env.proxyHost ? `${env.proxyHost}:${env.proxyPort ?? ''}` : '无代理'}<br /><small>{proxyResults[env.environmentId] ?? '未检测'}</small></span>
                 <span>{env.cookieCount}</span>
                 <span>Chrome {chromeVersion(env.userAgent)}</span>
                 <span className="status">{env.status === 'running' ? '运行中' : '未启动'}</span>
-                <span>
+                <span className="actions">
+                  <button className="secondary" onClick={() => void handleCheckProxy(env.environmentId)} disabled={loading}>检测</button>
                   {env.status === 'running' ? (
                     <button className="secondary" onClick={() => void handleStop(env.environmentId)} disabled={loading}>停止</button>
                   ) : (

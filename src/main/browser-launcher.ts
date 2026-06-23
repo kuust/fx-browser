@@ -6,6 +6,7 @@ export type BrowserLaunchPlanInput = {
   executablePath: string;
   appUserDataDir: string;
   environment: EnvironmentListItem;
+  browserProxyServer?: string | null;
 };
 
 export type BrowserLaunchPlan = {
@@ -43,7 +44,9 @@ export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLa
     args.push(`--user-agent=${input.environment.userAgent.trim()}`);
   }
 
-  if (input.environment.proxyHost && input.environment.proxyPort) {
+  if (input.browserProxyServer) {
+    args.push(`--proxy-server=${input.browserProxyServer}`);
+  } else if (input.environment.proxyHost && input.environment.proxyPort) {
     const scheme = proxySchemeFromRaw(input.environment.proxyRaw);
     args.push(`--proxy-server=${scheme}://${input.environment.proxyHost}:${input.environment.proxyPort}`);
   }

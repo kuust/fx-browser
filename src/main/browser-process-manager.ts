@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { EnvironmentListItem } from '../shared/store-types.js';
 import { buildBrowserLaunchPlan } from './browser-launcher.js';
+import { buildProxyBridgePlan, type ProxyBridgePlan } from './proxy-bridge.js';
 
 export type BrowserProcessResult = {
   status: 'started' | 'already-running' | 'stopped' | 'not-running';
@@ -13,6 +14,8 @@ export type BrowserProcessManagerOptions = {
   appUserDataDir: string;
   executablePathProvider: () => string | null;
   spawnBrowser?: (executablePath: string, args: string[]) => ChildProcess;
+  startProxyBridge?: (plan: Extract<ProxyBridgePlan, { mode: 'bridge' }>) => unknown | Promise<unknown>;
+  stopProxyBridge?: (environmentId: string) => void;
   markStatus: (environmentId: string, status: EnvironmentListItem['status']) => void;
 };
 
@@ -27,7 +30,7 @@ export class BrowserProcessManager {
     }));
   }
 
-  start(environment: EnvironmentListItem): BrowserProcessResult {
+  async start(environment: EnvironmentListItem): Promise<BrowserProcessResult> {
     if (this.processes.has(environment.environmentId)) {
       return { status: 'already-running', environmentId: environment.environmentId };
     }
@@ -37,10 +40,16 @@ export class BrowserProcessManager {
       throw new Error('未找到本机 Chrome 或 Edge，请先安装 Chrome/Edge，后续版本会支持手动选择内核路径。');
     }
 
+    const proxyPlan = buildProxyBridgePlan({ environment });
+    if (proxyPlan.mode === 'bridge') {
+      await this.options.startProxyBridge?.(proxyPlan);
+    }
+
     const plan = buildBrowserLaunchPlan({
       executablePath,
       appUserDataDir: this.options.appUserDataDir,
       environment,
+      browserProxyServer: proxyPlan.browserProxyServer,
     });
 
     mkdirSync(plan.profileUserDataDir, { recursive: true });
@@ -50,6 +59,7 @@ export class BrowserProcessManager {
 
     child.once('exit', () => {
       this.processes.delete(environment.environmentId);
+      this.options.stopProxyBridge?.(environment.environmentId);
       this.options.markStatus(environment.environmentId, 'stopped');
     });
 
@@ -61,6 +71,7 @@ export class BrowserProcessManager {
     if (!child) return { status: 'not-running', environmentId };
     child.kill();
     this.processes.delete(environmentId);
+    this.options.stopProxyBridge?.(environmentId);
     this.options.markStatus(environmentId, 'stopped');
     return { status: 'stopped', environmentId };
   }

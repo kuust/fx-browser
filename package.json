@@ -17,16 +17,18 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "concurrently": "latest",
+    "cross-env": "latest",
     "electron": "latest",
     "electron-builder": "latest",
-    "concurrently": "latest",
-    "wait-on": "latest",
-    "cross-env": "latest",
-    "vitest": "latest"
+    "proxy-chain": "^3.0.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "undici": "^8.5.0",
+    "vite": "latest",
+    "vitest": "latest",
+    "wait-on": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",

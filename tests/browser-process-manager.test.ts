@@ -28,7 +28,7 @@ function makeEnv(): EnvironmentListItem {
 }
 
 describe('BrowserProcessManager', () => {
-  it('spawns a browser launch plan once and reports running state', () => {
+  it('spawns a browser launch plan once and reports running state', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'fx-browser-process-'));
     const spawned: Array<{ executablePath: string; args: string[] }> = [];
     const fakeProcess = {
@@ -47,7 +47,7 @@ describe('BrowserProcessManager', () => {
         markStatus: () => undefined,
       });
 
-      const result = manager.start(makeEnv());
+      const result = await manager.start(makeEnv());
 
       expect(result.status).toBe('started');
       expect(manager.isRunning('env_000001')).toBe(true);
@@ -55,7 +55,7 @@ describe('BrowserProcessManager', () => {
       expect(spawned[0].executablePath).toContain('chrome.exe');
       expect(spawned[0].args).toContain('--new-window');
 
-      const second = manager.start(makeEnv());
+      const second = await manager.start(makeEnv());
       expect(second.status).toBe('already-running');
       expect(spawned).toHaveLength(1);
     } finally {
@@ -63,7 +63,7 @@ describe('BrowserProcessManager', () => {
     }
   });
 
-  it('stops a running browser process', () => {
+  it('stops a running browser process', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'fx-browser-process-'));
     let killed = false;
     const fakeProcess = {
@@ -82,12 +82,50 @@ describe('BrowserProcessManager', () => {
         markStatus: () => undefined,
       });
 
-      manager.start(makeEnv());
+      await manager.start(makeEnv());
       const result = manager.stop('env_000001');
 
       expect(result.status).toBe('stopped');
       expect(killed).toBe(true);
       expect(manager.isRunning('env_000001')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('starts a local proxy bridge for authenticated proxies before launching browser', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'fx-browser-process-'));
+    const spawned: Array<{ executablePath: string; args: string[] }> = [];
+    const bridges: string[] = [];
+    const fakeProcess = {
+      once: () => fakeProcess,
+      kill: () => true,
+    } as unknown as ChildProcess;
+
+    try {
+      const manager = new BrowserProcessManager({
+        appUserDataDir: dir,
+        executablePathProvider: () => 'chrome.exe',
+        spawnBrowser: (executablePath, args) => {
+          spawned.push({ executablePath, args });
+          return fakeProcess;
+        },
+        startProxyBridge: (plan) => {
+          bridges.push(`${plan.localHost}:${plan.localPort}->${plan.upstream.host}:${plan.upstream.port}`);
+        },
+        markStatus: () => undefined,
+      });
+
+      await manager.start({
+        ...makeEnv(),
+        proxyRaw: 'socks5://43.251.17.161:20000:user:pass',
+        proxyHost: '43.251.17.161',
+        proxyPort: 20000,
+      });
+
+      expect(bridges).toEqual(['127.0.0.1:30001->43.251.17.161:20000']);
+      expect(spawned[0].args).toContain('--proxy-server=http://127.0.0.1:30001');
+      expect(spawned[0].args).not.toContain('--proxy-server=socks5://43.251.17.161:20000');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
