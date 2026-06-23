@@ -16,25 +16,25 @@
     "lint:security": "node scripts/check-no-sensitive-files.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "concurrently": "latest",
-    "cross-env": "latest",
-    "electron": "latest",
-    "electron-builder": "latest",
     "proxy-chain": "^3.0.0",
     "react": "latest",
     "react-dom": "latest",
-    "typescript": "latest",
     "undici": "^8.5.0",
-    "vite": "latest",
-    "vitest": "latest",
-    "wait-on": "latest",
     "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@types/ws": "^8.18.1"
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "cross-env": "latest",
+    "electron": "latest",
+    "electron-builder": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest",
+    "wait-on": "latest"
   }
 }
