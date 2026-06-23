@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { EnvironmentListItem } from '../src/shared/store-types';
 import { buildBrowserLaunchPlan, findDefaultBrowserExecutable } from '../src/main/browser-launcher';
 
+function normalizePathForAssert(value: string): string {
+  return value.replaceAll('\\', '/');
+}
+
 function makeEnv(overrides: Partial<EnvironmentListItem> = {}): EnvironmentListItem {
   return {
     environmentId: 'env_000001',
@@ -38,7 +42,7 @@ describe('buildBrowserLaunchPlan', () => {
     });
 
     expect(plan.executablePath).toBe('C:/Program Files/Google/Chrome/Application/chrome.exe');
-    expect(plan.profileUserDataDir.replaceAll('\\\\', '/')).toContain('profiles/env_000001/user_data');
+    expect(normalizePathForAssert(plan.profileUserDataDir)).toContain('profiles/env_000001/user_data');
     expect(plan.args).toContain('--user-data-dir=C:/Users/Test/AppData/Roaming/FX Browser/profiles/env_000001/user_data');
     expect(plan.args).toContain('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36');
     expect(plan.args).toContain('--proxy-server=socks5://127.0.0.1:20000');
@@ -69,6 +73,6 @@ describe('findDefaultBrowserExecutable', () => {
       },
     });
 
-    expect(result?.replaceAll('\\\\', '/')).toBe('C:/Program Files/Microsoft/Edge/Application/msedge.exe');
+    expect(result ? normalizePathForAssert(result) : result).toBe('C:/Program Files/Microsoft/Edge/Application/msedge.exe');
   });
 });
