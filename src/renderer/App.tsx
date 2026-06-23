@@ -52,6 +52,32 @@ function App() {
     }
   }
 
+  async function handleStart(environmentId: string) {
+    setLoading(true);
+    try {
+      const result = await window.fxBrowser.startEnvironment(environmentId);
+      setEnvironments(result.environments);
+      setMessage(result.status === 'already-running' ? `环境 ${environmentId} 已在运行` : `已启动环境 ${environmentId}`);
+    } catch (error) {
+      setMessage(`启动失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleStop(environmentId: string) {
+    setLoading(true);
+    try {
+      const result = await window.fxBrowser.stopEnvironment(environmentId);
+      setEnvironments(result.environments);
+      setMessage(result.status === 'not-running' ? `环境 ${environmentId} 未在运行` : `已停止环境 ${environmentId}`);
+    } catch (error) {
+      setMessage(`停止失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const groupedCount = useMemo(() => {
     const groups = new Set(environments.map((item) => item.profileGroup || '未分组'));
     return groups.size;
@@ -113,10 +139,10 @@ function App() {
           </div>
           <div className="table">
             <div className="row header">
-              <span>序号</span><span>环境名称</span><span>分组</span><span>代理</span><span>Cookie</span><span>UA</span><span>状态</span>
+              <span>序号</span><span>环境名称</span><span>分组</span><span>代理</span><span>Cookie</span><span>UA</span><span>状态</span><span>操作</span>
             </div>
             {environments.length === 0 ? (
-              <div className="row empty seven"><span>—</span><span>导入 MoreLogin TXT 后显示</span><span>—</span><span>—</span><span>—</span><span>—</span><span>未启动</span></div>
+              <div className="row empty seven"><span>—</span><span>导入 MoreLogin TXT 后显示</span><span>—</span><span>—</span><span>—</span><span>—</span><span>未启动</span><span>—</span></div>
             ) : environments.map((env) => (
               <div className="row seven" key={env.environmentId}>
                 <span>#{env.importOrder}</span>
@@ -126,6 +152,13 @@ function App() {
                 <span>{env.cookieCount}</span>
                 <span>Chrome {chromeVersion(env.userAgent)}</span>
                 <span className="status">{env.status === 'running' ? '运行中' : '未启动'}</span>
+                <span>
+                  {env.status === 'running' ? (
+                    <button className="secondary" onClick={() => void handleStop(env.environmentId)} disabled={loading}>停止</button>
+                  ) : (
+                    <button className="secondary" onClick={() => void handleStart(env.environmentId)} disabled={loading}>启动</button>
+                  )}
+                </span>
               </div>
             ))}
           </div>

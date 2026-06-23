@@ -85,6 +85,18 @@ export class FxBrowserStore {
     return this.readStore().lastImport;
   }
 
+  markEnvironmentStatus(environmentId: string, status: EnvironmentListItem['status']): void {
+    const store = this.readStore();
+    const environment = store.environments.find((item) => item.environmentId === environmentId);
+    if (!environment) throw new Error(`Environment not found: ${environmentId}`);
+    environment.status = status;
+    this.writeStore(store);
+  }
+
+  getEnvironment(environmentId: string): EnvironmentListItem | null {
+    return this.readStore().environments.find((item) => item.environmentId === environmentId) ?? null;
+  }
+
   private readStore(): StoreFile {
     return JSON.parse(readFileSync(this.storePath, 'utf8')) as StoreFile;
   }

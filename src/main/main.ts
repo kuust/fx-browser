@@ -3,17 +3,31 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FxBrowserStore } from './fx-store.js';
 import { importMoreLoginFile } from './import-morelogin-file.js';
+import { BrowserProcessManager } from './browser-process-manager.js';
+import { findDefaultBrowserExecutable } from './browser-launcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let store: FxBrowserStore;
+let browserManager: BrowserProcessManager;
 
 function getStore(): FxBrowserStore {
   if (!store) {
     store = new FxBrowserStore(path.join(app.getPath('userData'), 'data'));
   }
   return store;
+}
+
+function getBrowserManager(): BrowserProcessManager {
+  if (!browserManager) {
+    browserManager = new BrowserProcessManager({
+      appUserDataDir: app.getPath('userData'),
+      executablePathProvider: () => findDefaultBrowserExecutable(),
+      markStatus: (environmentId, status) => getStore().markEnvironmentStatus(environmentId, status),
+    });
+  }
+  return browserManager;
 }
 
 function createWindow() {
@@ -62,6 +76,18 @@ ipcMain.handle('fx:import-morelogin-file', async () => {
 
   const imported = importMoreLoginFile(result.filePaths[0], getStore());
   return { canceled: false, ...imported };
+});
+
+ipcMain.handle('fx:start-environment', (_event, environmentId: string) => {
+  const environment = getStore().getEnvironment(environmentId);
+  if (!environment) throw new Error(`环境不存在：${environmentId}`);
+  const result = getBrowserManager().start(environment);
+  return { ...result, environments: getStore().listEnvironments() };
+});
+
+ipcMain.handle('fx:stop-environment', (_event, environmentId: string) => {
+  const result = getBrowserManager().stop(environmentId);
+  return { ...result, environments: getStore().listEnvironments() };
 });
 
 app.whenReady().then(() => {

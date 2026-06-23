@@ -96,6 +96,12 @@ describe('FxBrowserStore', () => {
         proxyHost: '',
         cookieCount: 0,
       });
+
+      store.markEnvironmentStatus('env_000001', 'running');
+      expect(store.listEnvironments()[0].status).toBe('running');
+
+      store.markEnvironmentStatus('env_000001', 'stopped');
+      expect(store.listEnvironments()[0].status).toBe('stopped');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
