@@ -9,7 +9,7 @@
     "dev": "vite --host 127.0.0.1",
     "dev:electron": "concurrently -k \"npm:dev\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "build": "tsc -p tsconfig.json && vite build && npm run build:main",
-    "build:main": "tsc -p tsconfig.electron.json",
+    "build:main": "tsc -p tsconfig.electron.json && node scripts/copy-preload.mjs",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "package:win": "npm run build && electron-builder --win --x64",
