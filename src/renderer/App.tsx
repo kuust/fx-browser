@@ -172,51 +172,61 @@ function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <img src="/assets/logo/fuxin-logo.png" alt="FX Browser logo" />
+          <div className="brand-mark">FX</div>
           <div>
             <strong>FX Browser</strong>
             <span>富信指纹环境管理器</span>
           </div>
         </div>
         <nav>
-          <button className={navClass('environments')} onClick={() => setActiveSection('environments')}>环境管理</button>
-          <button className={navClass('import')} onClick={() => setActiveSection('import')}>MoreLogin 导入</button>
-          <button className={navClass('proxy')} onClick={() => setActiveSection('proxy')}>代理检测</button>
-          <button className={navClass('cookies')} onClick={() => setActiveSection('cookies')}>Cookie 状态</button>
-          <button className={navClass('settings')} onClick={() => setActiveSection('settings')}>设置</button>
+          <button className={navClass('environments')} onClick={() => setActiveSection('environments')}><span className="nav-icon">▦</span><span>环境管理</span><em>{environments.length}</em></button>
+          <button className={navClass('import')} onClick={() => setActiveSection('import')}><span className="nav-icon">⇪</span><span>MoreLogin 导入</span></button>
+          <button className={navClass('proxy')} onClick={() => setActiveSection('proxy')}><span className="nav-icon">◎</span><span>代理检测</span><em>{proxyPendingCount}</em></button>
+          <button className={navClass('cookies')} onClick={() => setActiveSection('cookies')}><span className="nav-icon">◒</span><span>Cookie 状态</span><em>{xReadyCount}</em></button>
+          <button className={navClass('settings')} onClick={() => setActiveSection('settings')}><span className="nav-icon">⚙</span><span>设置</span></button>
         </nav>
+        <div className="sidebar-footer">
+          <span>Local Edition</span>
+          <strong>Fingerprint Chromium 148</strong>
+        </div>
       </aside>
 
       <section className="content">
         <header className="topbar">
-          <div>
-            <h1>FX Browser 环境管理</h1>
+          <div className="headline">
+            <div className="eyebrow"><span className="live-dot" /> 本地指纹环境控制台</div>
+            <h1>环境管理</h1>
             <p>{message}</p>
           </div>
           <div className="top-actions">
-            <button className="secondary" onClick={() => void refresh()} disabled={loading}>刷新</button>
+            <button className="ghost" onClick={() => void refresh()} disabled={loading}>刷新</button>
+            <button className="ghost" onClick={() => setActiveSection('proxy')} disabled={loading}>批量检测</button>
             <button className="primary" onClick={handleImport} disabled={loading}>
-              {loading ? '处理中...' : '+ 导入 TXT'}
+              {loading ? '处理中...' : '+ 导入 MoreLogin TXT'}
             </button>
           </div>
         </header>
 
         <section className="cards">
           <article className="card accent">
-            <h2>总环境</h2>
+            <div className="card-label">Total environments</div>
             <p className="metric">{environments.length}</p>
+            <small>按 MoreLogin 导出顺序保留</small>
           </article>
           <article className="card">
-            <h2>运行中</h2>
+            <div className="card-label">Running</div>
             <p className="metric small">{runningCount}</p>
+            <small>当前已启动环境</small>
           </article>
           <article className="card">
-            <h2>X/Twitter Cookie</h2>
-            <p>{xReadyCount} 个环境含 auth_token / ct0</p>
+            <div className="card-label">X/Twitter Cookie</div>
+            <p className="metric small">{xReadyCount}</p>
+            <small>含 auth_token / ct0</small>
           </article>
           <article className="card">
-            <h2>代理 / 分组</h2>
-            <p>代理：{summary?.proxyParseSuccess ?? 0}；分组：{groupedCount}</p>
+            <div className="card-label">Proxy / Groups</div>
+            <p className="metric small">{summary?.proxyParseSuccess ?? 0}<span> / {groupedCount}</span></p>
+            <small>已解析代理 / 分组数</small>
           </article>
         </section>
 
@@ -275,7 +285,7 @@ function App() {
           </div>
           <div className="table">
             <div className="row header">
-              <span>序号</span><span>环境名称</span><span>分组</span><span>代理</span><span>Cookie</span><span>UA</span><span>状态</span><span>操作</span>
+              <span>序号</span><span>环境 / 账号</span><span>分组</span><span>代理出口</span><span>Cookie 登录线索</span><span>内核/UA</span><span>状态</span><span>操作</span>
             </div>
             {environments.length === 0 ? (
               <div className="row empty seven"><span>—</span><span>导入 MoreLogin TXT 后显示</span><span>—</span><span>—</span><span>—</span><span>—</span><span>未启动</span><span>—</span></div>
@@ -285,22 +295,35 @@ function App() {
               const loginSummary = loginCookieSummary(env);
               return (
                 <div className="row seven" key={env.environmentId}>
-                <span>#{env.importOrder}</span>
-                <span title={env.profileName}>{maskEmail(env.profileName)}</span>
-                <span>{env.profileGroup || '未分组'}</span>
-                <span title={env.proxyRaw}>{env.proxyHost ? `${env.proxyHost}:${env.proxyPort ?? ''}` : '无代理'}<br /><small>{proxyResults[env.environmentId] ?? '未检测'}</small></span>
-                <span>{env.cookieCount}<br /><small>{cookieStatusText(env)}</small><br /><small>{loginSummary.xReady ? 'X 可登录' : 'X 无登录'} · {loginSummary.googleReady ? 'Google 有' : 'Google 无'} · {loginSummary.discordReady ? 'Discord 有' : 'Discord 无'}</small></span>
-                <span>Chrome {chromeVersion(env.userAgent)}</span>
-                <span><span className={statusClass(env)}>{env.status === 'running' ? '运行中' : cookieStatusText(env)}</span></span>
-                <span className="actions">
-                  <button className="secondary" onClick={() => void handleCheckProxy(env.environmentId)} disabled={loading}>检测</button>
-                  <button className="secondary" onClick={() => void handleResetCookieImport(env.environmentId)} disabled={loading || env.cookieCount === 0}>重导Cookie</button>
-                  {env.status === 'running' ? (
-                    <button className="secondary" onClick={() => void handleStop(env.environmentId)} disabled={loading}>停止</button>
-                  ) : (
-                    <button className="secondary" onClick={() => void handleStart(env.environmentId)} disabled={loading}>启动</button>
-                  )}
-                </span>
+                  <span className="mono muted">#{env.importOrder}</span>
+                  <span className="env-cell" title={env.profileName}>
+                    <strong>{maskEmail(env.profileName)}</strong>
+                    <small>{env.loginAccount ? maskEmail(env.loginAccount) : env.environmentId} · ID {env.sourceProfileId || env.environmentId}</small>
+                  </span>
+                  <span><span className="tag">{env.profileGroup || '未分组'}</span></span>
+                  <span className="proxy-cell" title={env.proxyRaw}>
+                    <strong>{env.proxyHost ? `${env.proxyHost}:${env.proxyPort ?? ''}` : '无代理'}</strong>
+                    <small>{proxyResults[env.environmentId] ?? '未检测'}</small>
+                  </span>
+                  <span className="cookie-cell">
+                    <strong>{env.cookieCount} cookies · {cookieStatusText(env)}</strong>
+                    <span className="badge-row">
+                      <b className={loginSummary.xReady ? 'mini-badge ok' : 'mini-badge'}>X</b>
+                      <b className={loginSummary.googleReady ? 'mini-badge ok' : 'mini-badge'}>Google</b>
+                      <b className={loginSummary.discordReady ? 'mini-badge ok' : 'mini-badge'}>Discord</b>
+                    </span>
+                  </span>
+                  <span className="kernel-cell"><strong>Chromium 148</strong><small>UA Chrome {chromeVersion(env.userAgent)}</small></span>
+                  <span><span className={statusClass(env)}>{env.status === 'running' ? '运行中' : cookieStatusText(env)}</span></span>
+                  <span className="actions">
+                    <button className="ghost compact" onClick={() => void handleCheckProxy(env.environmentId)} disabled={loading}>检测</button>
+                    <button className="ghost compact" onClick={() => void handleResetCookieImport(env.environmentId)} disabled={loading || env.cookieCount === 0}>重导</button>
+                    {env.status === 'running' ? (
+                      <button className="secondary compact" onClick={() => void handleStop(env.environmentId)} disabled={loading}>停止</button>
+                    ) : (
+                      <button className="primary compact" onClick={() => void handleStart(env.environmentId)} disabled={loading}>打开</button>
+                    )}
+                  </span>
                 </div>
               );
             })}
