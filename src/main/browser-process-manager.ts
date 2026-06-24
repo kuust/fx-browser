@@ -1,4 +1,5 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { EnvironmentListItem } from '../shared/store-types.js';
 import { buildBrowserLaunchPlan } from './browser-launcher.js';
@@ -42,6 +43,25 @@ export class BrowserProcessManager {
     return 40_000 + (numericId % 10_000);
   }
 
+  private titleExtensionPathFor(environment: EnvironmentListItem): string {
+    const extensionDir = path.join(this.options.appUserDataDir, 'profiles', environment.environmentId, 'fixed_title_extension');
+    mkdirSync(extensionDir, { recursive: true });
+    const title = JSON.stringify(environment.profileName || environment.environmentId);
+    writeFileSync(path.join(extensionDir, 'manifest.json'), JSON.stringify({
+      manifest_version: 3,
+      name: 'FX Browser Fixed Environment Title',
+      version: '1.0.0',
+      content_scripts: [{
+        matches: ['<all_urls>'],
+        js: ['title.js'],
+        run_at: 'document_idle',
+        all_frames: false,
+      }],
+    }, null, 2));
+    writeFileSync(path.join(extensionDir, 'title.js'), `(() => {\n  const fixedTitle = ${title};\n  const apply = () => { if (document.title !== fixedTitle) document.title = fixedTitle; };\n  apply();\n  new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: true });\n  setInterval(apply, 1000);\n})();\n`);
+    return extensionDir;
+  }
+
   async start(environment: EnvironmentListItem): Promise<BrowserProcessResult> {
     if (this.processes.has(environment.environmentId)) {
       return { status: 'already-running', environmentId: environment.environmentId };
@@ -66,6 +86,7 @@ export class BrowserProcessManager {
       environment,
       browserProxyServer,
       remoteDebuggingPort,
+      titleExtensionPath: this.titleExtensionPathFor(environment),
     });
 
     mkdirSync(plan.profileUserDataDir, { recursive: true });

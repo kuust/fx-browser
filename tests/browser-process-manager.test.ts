@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -60,7 +60,12 @@ describe('BrowserProcessManager', () => {
       expect(spawned[0].executablePath).toContain('chrome.exe');
       expect(spawned[0].args).toContain('--new-window');
       expect(spawned[0].args).toContain('--remote-debugging-port=40001');
-      expect(spawned[0].args).toContain('https://accounts.google.com/');
+      expect(spawned[0].args.some((arg) => arg.startsWith('data:text/html;charset=utf-8,'))).toBe(true);
+      expect(spawned[0].args.some((arg) => arg.startsWith('--load-extension='))).toBe(true);
+      expect(spawned[0].args.some((arg) => arg.startsWith('--disable-extensions-except='))).toBe(true);
+      const titleScript = path.join(dir, 'profiles', 'env_000001', 'fixed_title_extension', 'title.js');
+      expect(existsSync(titleScript)).toBe(true);
+      expect(readFileSync(titleScript, 'utf8')).toContain('alpha@example.com');
 
       const second = await manager.start(makeEnv());
       expect(second.status).toBe('already-running');

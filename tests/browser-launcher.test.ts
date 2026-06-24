@@ -56,7 +56,7 @@ describe('buildBrowserLaunchPlan', () => {
     expect(plan.args).toContain('--disable-non-proxied-udp');
   });
 
-  it('falls back to a useful cookie domain when platform domain is empty', () => {
+  it('opens the FX network check start page instead of a target website by default', () => {
     const plan = buildBrowserLaunchPlan({
       executablePath: 'chrome.exe',
       appUserDataDir: 'C:/FX Browser',
@@ -66,8 +66,12 @@ describe('buildBrowserLaunchPlan', () => {
       }),
     });
 
-    expect(plan.initialUrl).toBe('https://mail.google.com/');
-    expect(plan.args).toContain('https://mail.google.com/');
+    expect(plan.initialUrl.startsWith('data:text/html;charset=utf-8,')).toBe(true);
+    const decoded = decodeURIComponent(plan.initialUrl.replace('data:text/html;charset=utf-8,', ''));
+    expect(decoded).toContain('FX Browser Network Check');
+    expect(decoded).toContain('网络连接失败');
+    expect(decoded).toContain('alpha@example.com');
+    expect(plan.args.at(-1)).toBe(plan.initialUrl);
   });
 
   it('does not add proxy-server when environment has no proxy host or port', () => {

@@ -48,6 +48,7 @@ function App() {
   const [message, setMessage] = useState('等待导入 MoreLogin TXT');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   async function refresh() {
     const [list, lastSummary] = await Promise.all([
@@ -110,6 +111,30 @@ function App() {
     }
   }
 
+  async function handleBatchStart() {
+    const targets = environments.filter((env) => selectedIds.has(env.environmentId) && env.status !== 'running');
+    if (targets.length === 0) {
+      setMessage('请先勾选未运行的环境');
+      return;
+    }
+    setLoading(true);
+    let latest = environments;
+    let started = 0;
+    try {
+      for (const env of targets) {
+        const result = await window.fxBrowser.startEnvironment(env.environmentId);
+        latest = result.environments;
+        started += result.status === 'started' || result.status === 'already-running' ? 1 : 0;
+      }
+      setEnvironments(latest);
+      setMessage(`已批量打开 ${started}/${targets.length} 个环境`);
+    } catch (error) {
+      setMessage(`批量打开失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleCheckProxy(environmentId: string) {
     setLoading(true);
     setActiveSection('proxy');
@@ -167,6 +192,26 @@ function App() {
   const xReadyCount = environments.filter((env) => loginCookieSummary(env).xReady).length;
   const navClass = (section: SectionId) => (activeSection === section ? 'active' : undefined);
   const proxyPendingCount = environments.filter((env) => env.proxyRaw && !proxyResults[env.environmentId]).length;
+  const visibleIds = filteredEnvironments.map((env) => env.environmentId);
+  const selectedVisibleCount = visibleIds.filter((id) => selectedIds.has(id)).length;
+  const selectedCount = selectedIds.size;
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+  const toggleSelected = (environmentId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(environmentId)) next.delete(environmentId);
+      else next.add(environmentId);
+      return next;
+    });
+  };
+  const toggleVisibleSelected = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+      else visibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
 
   return (
     <main className="app-shell">
@@ -201,6 +246,7 @@ function App() {
           <div className="top-actions">
             <button className="ghost" onClick={() => void refresh()} disabled={loading}>刷新</button>
             <button className="ghost" onClick={() => setActiveSection('proxy')} disabled={loading}>批量检测</button>
+            <button className="secondary" onClick={() => void handleBatchStart()} disabled={loading || selectedCount === 0}>打开选中{selectedCount ? `(${selectedCount})` : ''}</button>
             <button className="primary" onClick={handleImport} disabled={loading}>
               {loading ? '处理中...' : '+ 导入 MoreLogin TXT'}
             </button>
@@ -285,16 +331,17 @@ function App() {
           </div>
           <div className="table">
             <div className="row header">
-              <span>序号</span><span>环境 / 账号</span><span>分组</span><span>代理出口</span><span>Cookie 登录线索</span><span>内核/UA</span><span>状态</span><span>操作</span>
+              <span><input aria-label="选择当前列表" type="checkbox" checked={allVisibleSelected} onChange={toggleVisibleSelected} /></span><span>序号</span><span>环境 / 账号</span><span>分组</span><span>代理出口</span><span>Cookie 登录线索</span><span>内核/UA</span><span>状态</span><span>操作</span>
             </div>
             {environments.length === 0 ? (
-              <div className="row empty seven"><span>—</span><span>导入 MoreLogin TXT 后显示</span><span>—</span><span>—</span><span>—</span><span>—</span><span>未启动</span><span>—</span></div>
+              <div className="row empty seven"><span>—</span><span>—</span><span>导入 MoreLogin TXT 后显示</span><span>—</span><span>—</span><span>—</span><span>—</span><span>未启动</span><span>—</span></div>
             ) : filteredEnvironments.length === 0 ? (
-              <div className="row empty seven"><span>—</span><span>没有符合筛选的环境</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
+              <div className="row empty seven"><span>—</span><span>—</span><span>没有符合筛选的环境</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
             ) : filteredEnvironments.map((env) => {
               const loginSummary = loginCookieSummary(env);
               return (
                 <div className="row seven" key={env.environmentId}>
+                  <span><input aria-label={`选择 ${env.profileName || env.environmentId}`} type="checkbox" checked={selectedIds.has(env.environmentId)} onChange={() => toggleSelected(env.environmentId)} /></span>
                   <span className="mono muted">#{env.importOrder}</span>
                   <span className="env-cell" title={env.profileName}>
                     <strong>{maskEmail(env.profileName)}</strong>

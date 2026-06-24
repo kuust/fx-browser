@@ -8,6 +8,7 @@ export type BrowserLaunchPlanInput = {
   environment: EnvironmentListItem;
   browserProxyServer?: string | null;
   remoteDebuggingPort?: number | null;
+  titleExtensionPath?: string | null;
 };
 
 export type BrowserLaunchPlan = {
@@ -73,10 +74,14 @@ function preferredCookieDomain(cookieRaw: string): string | null {
   }
 }
 
+function startPageHtml(environment: EnvironmentListItem): string {
+  const title = environment.profileName || environment.environmentId;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${title}</title><style>
+  :root{font-family:Inter,"Microsoft YaHei",system-ui,sans-serif;color:#111827;background:#f6f7fb}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 30% 0%,rgba(37,99,235,.14),transparent 34%),#f6f7fb}.card{width:min(760px,calc(100vw - 48px));background:#fff;border:1px solid #e6eaf2;border-radius:24px;box-shadow:0 24px 70px rgba(16,24,40,.12);padding:34px}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#667085}.name{margin:8px 0 0;font-size:30px;letter-spacing:-.04em}.status{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fffaeb;color:#b54708;font-weight:800}.status.ok{background:#ecfdf3;color:#027a48}.status.fail{background:#fef3f2;color:#b42318}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}.item{background:#f8fafc;border:1px solid #edf0f5;border-radius:16px;padding:16px}.label{font-size:12px;color:#667085;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.value{margin-top:8px;font-size:20px;font-weight:800;color:#101828;word-break:break-all}.hint{margin-top:24px;color:#667085;line-height:1.7}.actions{margin-top:24px;display:flex;gap:10px}.btn{border:0;border-radius:11px;background:#2563eb;color:#fff;padding:11px 16px;font-weight:800;text-decoration:none}.ghost{background:#eef2ff;color:#1d4ed8}</style></head><body><main class="card"><div class="top"><div><div class="eyebrow">FX Browser Network Check</div><h1 class="name">${title}</h1></div><div id="status" class="status">检测中...</div></div><section class="grid"><div class="item"><div class="label">IP Address</div><div id="ip" class="value">检测中</div></div><div class="item"><div class="label">Country / Region</div><div id="country" class="value">—</div></div><div class="item"><div class="label">City</div><div id="city" class="value">—</div></div></section><p id="hint" class="hint">正在检测当前环境代理出口。如果网络不通，这里会显示网络连接失败。</p><div class="actions"><a class="btn" href="https://mail.google.com/">打开 Gmail</a><a class="btn ghost" href="https://x.com/">打开 X</a><a class="btn ghost" href="https://ipinfo.io/">备用 IP 检测</a></div></main><script>(async()=>{const s=document.getElementById('status'),ip=document.getElementById('ip'),c=document.getElementById('country'),city=document.getElementById('city'),hint=document.getElementById('hint');try{const r=await fetch('https://ipapi.co/json/',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();s.textContent='网络已连接';s.className='status ok';ip.textContent=d.ip||'未知';c.textContent=[d.country_name,d.region].filter(Boolean).join(' / ')||'未知';city.textContent=d.city||'未知';hint.textContent='代理出口检测成功。你可以继续打开目标网站。'}catch(e){s.textContent='网络连接失败';s.className='status fail';ip.textContent='网络连接失败';hint.textContent='当前环境无法完成 IP 检测，请检查 Clash、代理账号或网络连接。'}})();</script></body></html>`;
+}
+
 function initialUrlFromEnvironment(environment: EnvironmentListItem): string {
-  return urlFromDomain(environment.platformDomain)
-    ?? urlFromDomain(preferredCookieDomain(environment.cookieRaw) ?? '')
-    ?? 'about:blank';
+  return `data:text/html;charset=utf-8,${encodeURIComponent(startPageHtml(environment))}`;
 }
 
 export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLaunchPlan {
@@ -115,6 +120,12 @@ export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLa
   } else if (input.environment.proxyHost && input.environment.proxyPort) {
     const scheme = proxySchemeFromRaw(input.environment.proxyRaw);
     args.push(`--proxy-server=${scheme}://${input.environment.proxyHost}:${input.environment.proxyPort}`);
+  }
+
+  if (input.titleExtensionPath) {
+    const extensionPath = normalizeForChromiumArg(input.titleExtensionPath);
+    args.push(`--disable-extensions-except=${extensionPath}`);
+    args.push(`--load-extension=${extensionPath}`);
   }
 
   args.push(initialUrl);
