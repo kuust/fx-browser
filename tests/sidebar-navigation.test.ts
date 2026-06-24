@@ -10,10 +10,10 @@ describe('sidebar navigation wiring', () => {
     expect(appSource).toContain('setActiveSection');
   });
 
-  it('wires MoreLogin import, proxy check, sync, and settings menu items to click handlers', () => {
+  it('wires MoreLogin import, proxy check, cookie status, and settings menu items to click handlers', () => {
     expect(appSource).toMatch(/onClick=\{\(\) => setActiveSection\('import'\)\}/);
     expect(appSource).toMatch(/onClick=\{\(\) => setActiveSection\('proxy'\)\}/);
-    expect(appSource).toMatch(/onClick=\{\(\) => setActiveSection\('sync'\)\}/);
+    expect(appSource).toMatch(/onClick=\{\(\) => setActiveSection\('cookies'\)\}/);
     expect(appSource).toMatch(/onClick=\{\(\) => setActiveSection\('settings'\)\}/);
   });
 });

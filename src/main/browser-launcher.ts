@@ -27,6 +27,20 @@ function normalizeForChromiumArg(value: string): string {
   return value.replaceAll('\\\\', '/');
 }
 
+function chromeVersion(ua: string): string | null {
+  return ua.match(/Chrome\/(\d+)/)?.[1] ?? null;
+}
+
+function fingerprintSeed(environment: EnvironmentListItem): number {
+  const base = environment.sourceProfileId || environment.environmentId;
+  let hash = 2166136261;
+  for (const ch of base) {
+    hash ^= ch.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 function proxySchemeFromRaw(raw: string): 'http' | 'https' | 'socks5' {
   const match = raw.match(/^(https?|socks5):\/\//i);
   return (match?.[1]?.toLowerCase() as 'http' | 'https' | 'socks5') ?? 'http';
@@ -73,8 +87,20 @@ export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLa
     '--no-first-run',
     '--disable-default-apps',
     '--disable-notifications',
+    '--disable-non-proxied-udp',
+    `--fingerprint=${fingerprintSeed(input.environment)}`,
+    '--fingerprint-platform=windows',
+    '--fingerprint-brand=Chrome',
+    '--lang=en-US',
+    '--accept-lang=en-US,en',
+    '--timezone=America/Los_Angeles',
     '--new-window',
   ];
+
+  const version = chromeVersion(input.environment.userAgent);
+  if (version) {
+    args.push(`--fingerprint-brand-version=${version}`);
+  }
 
   if (input.environment.userAgent.trim()) {
     args.push(`--user-agent=${input.environment.userAgent.trim()}`);
@@ -112,7 +138,17 @@ export function findDefaultBrowserExecutable(options: FindBrowserOptions = {}): 
   const programFilesX86 = env['PROGRAMFILES(X86)'] ?? 'C:/Program Files (x86)';
   const localAppData = env.LOCALAPPDATA ?? '';
 
+  const electronProcess = process as NodeJS.Process & { resourcesPath?: string };
+  const resourcesPath = electronProcess.resourcesPath ?? '';
+
   const candidates = [
+    env.FX_FINGERPRINT_CHROMIUM_PATH ?? '',
+    path.join(resourcesPath, 'fingerprint-chromium/chrome.exe'),
+    path.join(resourcesPath, 'fingerprint-chromium/ungoogled-chromium.exe'),
+    path.join(process.cwd(), 'runtime/fingerprint-chromium/chrome.exe'),
+    path.join(process.cwd(), 'runtime/fingerprint-chromium/ungoogled-chromium.exe'),
+    path.join(programFiles, 'FX Browser/fingerprint-chromium/chrome.exe'),
+    path.join(programFiles, 'Ungoogled Chromium/Application/chrome.exe'),
     path.join(programFiles, 'Google/Chrome/Application/chrome.exe'),
     path.join(programFilesX86, 'Google/Chrome/Application/chrome.exe'),
     localAppData ? path.join(localAppData, 'Google/Chrome/Application/chrome.exe') : '',

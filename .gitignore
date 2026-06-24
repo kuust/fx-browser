@@ -9,6 +9,8 @@ dist-electron/
 release/
 out/
 build/
+runtime/fingerprint-chromium/
+.cache/
 *.tsbuildinfo
 
 # Runtime data - never commit real browser/user data

@@ -34,7 +34,7 @@ function makeEnv(overrides: Partial<EnvironmentListItem> = {}): EnvironmentListI
 }
 
 describe('buildBrowserLaunchPlan', () => {
-  it('builds a launch plan with isolated user-data-dir, UA, proxy and safe startup flags', () => {
+  it('builds a launch plan with isolated user-data-dir, fingerprint flags, UA, proxy and safe startup flags', () => {
     const plan = buildBrowserLaunchPlan({
       executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
       appUserDataDir: 'C:/Users/Test/AppData/Roaming/FX Browser',
@@ -45,10 +45,15 @@ describe('buildBrowserLaunchPlan', () => {
     expect(normalizePathForAssert(plan.profileUserDataDir)).toContain('profiles/env_000001/user_data');
     const normalizedArgs = plan.args.map((arg) => normalizePathForAssert(arg));
     expect(normalizedArgs).toContain('--user-data-dir=C:/Users/Test/AppData/Roaming/FX Browser/profiles/env_000001/user_data');
+    expect(plan.args.some((arg) => arg.startsWith('--fingerprint='))).toBe(true);
+    expect(plan.args).toContain('--fingerprint-platform=windows');
+    expect(plan.args).toContain('--fingerprint-brand=Chrome');
+    expect(plan.args).toContain('--fingerprint-brand-version=140');
     expect(plan.args).toContain('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36');
     expect(plan.args).toContain('--proxy-server=socks5://127.0.0.1:20000');
     expect(plan.args).toContain('--no-first-run');
     expect(plan.args).toContain('--disable-default-apps');
+    expect(plan.args).toContain('--disable-non-proxied-udp');
   });
 
   it('falls back to a useful cookie domain when platform domain is empty', () => {
@@ -77,6 +82,21 @@ describe('buildBrowserLaunchPlan', () => {
 });
 
 describe('findDefaultBrowserExecutable', () => {
+  it('prefers configured fingerprint Chromium before system Chrome or Edge', () => {
+    const result = findDefaultBrowserExecutable({
+      platform: 'win32',
+      exists: (candidate) => normalizePathForAssert(candidate) === 'D:/fx/fingerprint-chromium/chrome.exe',
+      env: {
+        FX_FINGERPRINT_CHROMIUM_PATH: 'D:/fx/fingerprint-chromium/chrome.exe',
+        PROGRAMFILES: 'C:/Program Files',
+        'PROGRAMFILES(X86)': 'C:/Program Files (x86)',
+        LOCALAPPDATA: 'C:/Users/Test/AppData/Local',
+      },
+    });
+
+    expect(result ? normalizePathForAssert(result) : result).toBe('D:/fx/fingerprint-chromium/chrome.exe');
+  });
+
   it('returns the first existing Chrome or Edge executable path from candidates', () => {
     const result = findDefaultBrowserExecutable({
       platform: 'win32',

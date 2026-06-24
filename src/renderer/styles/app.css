@@ -1,23 +1,26 @@
 :root {
-  color: #172033;
-  background: #f5f7fb;
+  color: #1f2937;
+  background: #f3f6fb;
   font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
 
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
-  background: #f5f7fb;
+  grid-template-columns: 228px 1fr;
+  background: #f3f6fb;
 }
 
 .sidebar {
-  background: #101828;
-  color: #fff;
-  padding: 24px 18px;
+  background: #fff;
+  color: #344054;
+  border-right: 1px solid #e6eaf2;
+  padding: 20px 14px;
 }
 
 .brand {
@@ -35,14 +38,14 @@ body { margin: 0; }
   background: #fff;
 }
 
-.brand strong { display: block; font-size: 19px; }
-.brand span { display: block; color: #b8c4d8; font-size: 12px; margin-top: 3px; }
+.brand strong { display: block; font-size: 18px; color: #111827; }
+.brand span { display: block; color: #667085; font-size: 12px; margin-top: 3px; }
 
-nav { display: grid; gap: 8px; }
+nav { display: grid; gap: 6px; }
 nav button {
   width: 100%;
-  padding: 12px 14px;
-  color: #c8d3e5;
+  padding: 11px 12px;
+  color: #475467;
   border-radius: 10px;
   cursor: pointer;
   border: 0;
@@ -50,9 +53,9 @@ nav button {
   text-align: left;
   font: inherit;
 }
-nav button.active, nav button:hover { background: #1d4ed8; color: #fff; }
+nav button.active, nav button:hover { background: #eef4ff; color: #175cd3; font-weight: 700; }
 
-.content { padding: 28px; }
+.content { padding: 22px 24px; overflow: auto; }
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -61,8 +64,19 @@ nav button.active, nav button:hover { background: #1d4ed8; color: #fff; }
 }
 
 h1, h2, p { margin-top: 0; }
-h1 { margin-bottom: 8px; font-size: 30px; }
+h1 { margin-bottom: 6px; font-size: 26px; letter-spacing: -0.02em; }
 .topbar p { color: #667085; margin-bottom: 0; }
+.top-actions, .filters { display: flex; gap: 10px; align-items: center; }
+
+.filters input, .filters select {
+  height: 36px;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  background: #fff;
+  color: #344054;
+  padding: 0 12px;
+}
+.filters input { width: 260px; }
 
 .primary {
   border: 0;
@@ -110,25 +124,44 @@ h1 { margin-bottom: 8px; font-size: 30px; }
 .panel-title {
   display: flex;
   justify-content: space-between;
-  padding: 18px 20px;
+  gap: 14px;
+  padding: 16px 18px;
   border-bottom: 1px solid #eef2f7;
+  align-items: center;
 }
+.table-title h2 { margin-bottom: 4px; }
 .panel-title h2 { font-size: 18px; margin: 0; }
-.panel-title span { color: #667085; }
+.panel-title span { color: #667085; font-size: 13px; }
 
-.table { display: grid; }
+.table { display: grid; overflow-x: auto; }
 .row {
   display: grid;
-  grid-template-columns: 58px 1.25fr 0.75fr 1.25fr 70px 92px 78px 110px;
-  padding: 14px 20px;
+  grid-template-columns: 58px minmax(160px, 1.25fr) 96px minmax(170px, 1.1fr) minmax(190px, 1.25fr) 92px 82px 210px;
+  padding: 13px 18px;
   border-bottom: 1px solid #eef2f7;
   align-items: center;
   gap: 12px;
+  min-width: 1120px;
 }
-.row.header { background: #f8fafc; color: #475467; font-weight: 700; }
+.row.header { background: #f8fafc; color: #667085; font-weight: 700; font-size: 13px; }
 .row.empty { color: #98a2b3; }
-.metric { font-size: 32px; font-weight: 800; color: #1d4ed8; }
-.metric.small { color: #172033; }
+.metric { font-size: 32px; font-weight: 800; color: #175cd3; line-height: 1; }
+.metric.small { color: #111827; }
 .status { color: #475467; font-weight: 700; }
 .actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.row small { color: #667085; }
+.row small { color: #667085; line-height: 1.55; }
+.secondary:hover { background: #e0e7ff; border-color: #a5b4fc; }
+.primary:hover { background: #1d4ed8; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pill.success { background: #ecfdf3; color: #027a48; }
+.pill.warning { background: #fffaeb; color: #b54708; }
+.pill.danger { background: #fef3f2; color: #b42318; }
