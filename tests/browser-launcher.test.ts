@@ -68,7 +68,12 @@ describe('buildBrowserLaunchPlan', () => {
 
     expect(plan.initialUrl.startsWith('data:text/html;charset=utf-8,')).toBe(true);
     const decoded = decodeURIComponent(plan.initialUrl.replace('data:text/html;charset=utf-8,', ''));
-    expect(decoded).toContain('FX Browser Network Check');
+    expect(decoded).toContain('FX Browser Multi-source Network Check');
+    expect(decoded).toContain('ipapi.co');
+    expect(decoded).toContain('ipinfo.io');
+    expect(decoded).toContain('ipwho.is');
+    expect(decoded).toContain('api.myip.com');
+    expect(decoded).toContain('api.ipify.org');
     expect(decoded).toContain('网络连接失败');
     expect(decoded).toContain('alpha@example.com');
     expect(plan.args.at(-1)).toBe(plan.initialUrl);
