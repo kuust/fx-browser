@@ -5,6 +5,7 @@ import { buildBrowserLaunchPlan } from './browser-launcher.js';
 import { buildProxyBridgePlan, type ProxyBridgePlan } from './proxy-bridge.js';
 import { CdpCookieTransport } from './cdp-cookie-transport.js';
 import { importCookiesIntoBrowser, type CdpCookie, type CookieImportResult } from './cookie-importer.js';
+import type { LocalProxyBridgeStartResult } from './local-proxy-bridge-manager.js';
 
 export type BrowserProcessResult = {
   status: 'started' | 'already-running' | 'stopped' | 'not-running';
@@ -16,7 +17,7 @@ export type BrowserProcessManagerOptions = {
   appUserDataDir: string;
   executablePathProvider: () => string | null;
   spawnBrowser?: (executablePath: string, args: string[]) => ChildProcess;
-  startProxyBridge?: (plan: Extract<ProxyBridgePlan, { mode: 'bridge' }>) => unknown | Promise<unknown>;
+  startProxyBridge?: (plan: Extract<ProxyBridgePlan, { mode: 'bridge' }>) => LocalProxyBridgeStartResult | void | Promise<LocalProxyBridgeStartResult | void>;
   stopProxyBridge?: (environmentId: string) => void;
   markStatus: (environmentId: string, status: EnvironmentListItem['status']) => void;
   markCookieImportResult?: (environmentId: string, result: CookieImportResult) => void;
@@ -52,8 +53,10 @@ export class BrowserProcessManager {
     }
 
     const proxyPlan = buildProxyBridgePlan({ environment });
+    let browserProxyServer = proxyPlan.browserProxyServer;
     if (proxyPlan.mode === 'bridge') {
-      await this.options.startProxyBridge?.(proxyPlan);
+      const bridgeResult = await this.options.startProxyBridge?.(proxyPlan);
+      browserProxyServer = bridgeResult?.browserProxyServer ?? proxyPlan.browserProxyServer;
     }
 
     const remoteDebuggingPort = this.debuggingPortFor(environment.environmentId);
@@ -61,7 +64,7 @@ export class BrowserProcessManager {
       executablePath,
       appUserDataDir: this.options.appUserDataDir,
       environment,
-      browserProxyServer: proxyPlan.browserProxyServer,
+      browserProxyServer,
       remoteDebuggingPort,
     });
 

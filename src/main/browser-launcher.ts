@@ -32,15 +32,37 @@ function proxySchemeFromRaw(raw: string): 'http' | 'https' | 'socks5' {
   return (match?.[1]?.toLowerCase() as 'http' | 'https' | 'socks5') ?? 'http';
 }
 
-function initialUrlFromEnvironment(environment: EnvironmentListItem): string {
-  const raw = environment.platformDomain.trim();
-  if (!raw) return 'about:blank';
+function urlFromDomain(rawDomain: string): string | null {
+  const raw = rawDomain.trim().replace(/^\.+/, '');
+  if (!raw || raw === 'localhost') return null;
   const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
   try {
     return new URL(withScheme).toString();
   } catch {
-    return 'about:blank';
+    return null;
   }
+}
+
+function preferredCookieDomain(cookieRaw: string): string | null {
+  try {
+    const cookies = JSON.parse(cookieRaw) as Array<{ domain?: unknown }>;
+    const domains = cookies
+      .map((cookie) => typeof cookie.domain === 'string' ? cookie.domain.trim().replace(/^\.+/, '') : '')
+      .filter(Boolean);
+    const preferred = domains.find((domain) => /(^|\.)mail\.google\.com$/i.test(domain))
+      ?? domains.find((domain) => /(^|\.)accounts\.google\.com$/i.test(domain))
+      ?? domains.find((domain) => !/(^|\.)google\.com$/i.test(domain))
+      ?? domains[0];
+    return preferred ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function initialUrlFromEnvironment(environment: EnvironmentListItem): string {
+  return urlFromDomain(environment.platformDomain)
+    ?? urlFromDomain(preferredCookieDomain(environment.cookieRaw) ?? '')
+    ?? 'about:blank';
 }
 
 export function buildBrowserLaunchPlan(input: BrowserLaunchPlanInput): BrowserLaunchPlan {
