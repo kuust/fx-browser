@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import type { EnvironmentListItem, SavedImportSummary } from '../shared/store-types';
 import './styles/app.css';
 
+type SectionId = 'environments' | 'import' | 'proxy' | 'sync' | 'settings';
+
 function maskEmail(value: string) {
   if (!value.includes('@')) return value || '—';
   const [name, domain] = value.split('@');
@@ -21,6 +23,7 @@ function cookieStatusText(env: EnvironmentListItem) {
 }
 
 function App() {
+  const [activeSection, setActiveSection] = useState<SectionId>('environments');
   const [environments, setEnvironments] = useState<EnvironmentListItem[]>([]);
   const [summary, setSummary] = useState<SavedImportSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,6 +46,7 @@ function App() {
 
   async function handleImport() {
     setLoading(true);
+    setActiveSection('import');
     setMessage('请选择 MoreLogin 导出的 export_profile.txt');
     try {
       const result = await window.fxBrowser.importMoreLoginFile();
@@ -52,6 +56,7 @@ function App() {
       }
       setSummary(result.summary);
       setEnvironments(result.environments);
+      setActiveSection('environments');
       setMessage(`导入完成：${result.summary.totalProfiles} 个环境，已严格保留原始顺序`);
     } catch (error) {
       setMessage(`导入失败：${(error as Error).message}`);
@@ -88,6 +93,7 @@ function App() {
 
   async function handleCheckProxy(environmentId: string) {
     setLoading(true);
+    setActiveSection('proxy');
     setProxyResults((prev) => ({ ...prev, [environmentId]: '检测中...' }));
     try {
       const result = await window.fxBrowser.checkProxy(environmentId);
@@ -125,6 +131,9 @@ function App() {
     return groups.size;
   }, [environments]);
 
+  const navClass = (section: SectionId) => (activeSection === section ? 'active' : undefined);
+  const proxyPendingCount = environments.filter((env) => env.proxyRaw && !proxyResults[env.environmentId]).length;
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -136,11 +145,11 @@ function App() {
           </div>
         </div>
         <nav>
-          <a className="active">环境管理</a>
-          <a>MoreLogin 导入</a>
-          <a>代理检测</a>
-          <a>同步器</a>
-          <a>设置</a>
+          <button className={navClass('environments')} onClick={() => setActiveSection('environments')}>环境管理</button>
+          <button className={navClass('import')} onClick={() => setActiveSection('import')}>MoreLogin 导入</button>
+          <button className={navClass('proxy')} onClick={() => setActiveSection('proxy')}>代理检测</button>
+          <button className={navClass('sync')} onClick={() => setActiveSection('sync')}>同步器</button>
+          <button className={navClass('settings')} onClick={() => setActiveSection('settings')}>设置</button>
         </nav>
       </aside>
 
@@ -173,6 +182,43 @@ function App() {
             <p className="metric small">{groupedCount}</p>
           </article>
         </section>
+
+        {activeSection === 'import' && (
+          <section className="panel info-panel">
+            <div className="panel-title"><h2>MoreLogin 导入</h2><span>{summary ? `上次来源：${summary.sourceFileName}` : '未导入'}</span></div>
+            <div className="panel-body">
+              <p>点击“导入 MoreLogin TXT”选择 MoreLogin 导出的 export_profile.txt。导入会保留原始顺序、原始 Profile ID、Cookie、代理、UA、分组、标签和备注。</p>
+              <button className="primary" onClick={handleImport} disabled={loading}>{loading ? '导入中...' : '选择并导入 TXT'}</button>
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'proxy' && (
+          <section className="panel info-panel">
+            <div className="panel-title"><h2>代理检测</h2><span>待检测：{proxyPendingCount}</span></div>
+            <div className="panel-body">
+              <p>在环境列表每行点击“检测”即可检测该环境的代理出口 IP。检测结果会显示在代理列下方。</p>
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'sync' && (
+          <section className="panel info-panel">
+            <div className="panel-title"><h2>同步器</h2><span>本地个人版</span></div>
+            <div className="panel-body">
+              <p>同步器入口已可点击。当前版本以本机数据为准，后续可在这里加入备份、恢复和跨设备同步配置。</p>
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'settings' && (
+          <section className="panel info-panel">
+            <div className="panel-title"><h2>设置</h2><span>运行参数</span></div>
+            <div className="panel-body">
+              <p>设置入口已可点击。当前版本默认保留 MoreLogin 原始 UA，并使用本机默认 Chromium/Chrome 启动环境。</p>
+            </div>
+          </section>
+        )}
 
         <section className="panel">
           <div className="panel-title">

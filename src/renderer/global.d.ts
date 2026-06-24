@@ -20,17 +20,20 @@ type ProxyCheckUiResult = {
   message: string;
 };
 
+type FxBrowserBridge = {
+  listEnvironments: () => Promise<EnvironmentListItem[]>;
+  getLastImportSummary: () => Promise<SavedImportSummary | null>;
+  importMoreLoginFile: () => Promise<ImportMoreLoginUiResult>;
+  startEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
+  stopEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
+  checkProxy: (environmentId: string) => Promise<ProxyCheckUiResult>;
+  resetCookieImport: (environmentId: string) => Promise<{ environmentId: string; environments: EnvironmentListItem[] }>;
+};
+
 declare global {
   interface Window {
-    fxBrowser: {
-      listEnvironments: () => Promise<EnvironmentListItem[]>;
-      getLastImportSummary: () => Promise<SavedImportSummary | null>;
-      importMoreLoginFile: () => Promise<ImportMoreLoginUiResult>;
-      startEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
-      stopEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
-      checkProxy: (environmentId: string) => Promise<ProxyCheckUiResult>;
-      resetCookieImport: (environmentId: string) => Promise<{ environmentId: string; environments: EnvironmentListItem[] }>;
-    };
+    fxBrowser: FxBrowserBridge;
+    electronAPI: FxBrowserBridge;
   }
 }
 
