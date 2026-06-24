@@ -24,8 +24,10 @@ describe('LocalProxyBridgeManager', () => {
   it('creates an anonymized local proxy for an authenticated upstream proxy', async () => {
     const calls: string[] = [];
     const manager = new LocalProxyBridgeManager({
-      anonymizeProxy: async (proxyUrl, options) => {
-        calls.push(`${proxyUrl}|${options?.port}`);
+      anonymizeProxy: async (options) => {
+        const proxyUrl = typeof options === 'string' ? options : options.url;
+        const port = typeof options === 'string' ? undefined : options.port;
+        calls.push(`${proxyUrl}|${port}`);
         return 'http://127.0.0.1:30042';
       },
       closeAnonymizedProxy: async () => undefined,
