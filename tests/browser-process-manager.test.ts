@@ -138,6 +138,44 @@ describe('BrowserProcessManager', () => {
     }
   });
 
+  it('uses the actual local proxy URL returned by the proxy bridge before launching browser', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'fx-browser-process-'));
+    const spawned: Array<{ executablePath: string; args: string[] }> = [];
+    const fakeProcess = {
+      once: () => fakeProcess,
+      kill: () => true,
+    } as unknown as ChildProcess;
+
+    try {
+      const manager = new BrowserProcessManager({
+        appUserDataDir: dir,
+        executablePathProvider: () => 'chrome.exe',
+        spawnBrowser: (executablePath, args) => {
+          spawned.push({ executablePath, args });
+          return fakeProcess;
+        },
+        startProxyBridge: () => ({
+          environmentId: 'env_000001',
+          localProxyUrl: 'http://127.0.0.1:31234',
+          browserProxyServer: 'http://127.0.0.1:31234',
+        }),
+        markStatus: () => undefined,
+      });
+
+      await manager.start({
+        ...makeEnv(),
+        proxyRaw: 'socks5://43.251.17.161:20000:user:pass',
+        proxyHost: '43.251.17.161',
+        proxyPort: 20000,
+      });
+
+      expect(spawned[0].args).toContain('--proxy-server=http://127.0.0.1:31234');
+      expect(spawned[0].args).not.toContain('--proxy-server=http://127.0.0.1:30001');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('imports pending cookies after first launch and records imported status without blocking launch', async () => {
     vi.useFakeTimers();
     const dir = mkdtempSync(path.join(tmpdir(), 'fx-browser-process-'));

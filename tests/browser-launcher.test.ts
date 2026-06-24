@@ -51,6 +51,20 @@ describe('buildBrowserLaunchPlan', () => {
     expect(plan.args).toContain('--disable-default-apps');
   });
 
+  it('falls back to a useful cookie domain when platform domain is empty', () => {
+    const plan = buildBrowserLaunchPlan({
+      executablePath: 'chrome.exe',
+      appUserDataDir: 'C:/FX Browser',
+      environment: makeEnv({
+        platformDomain: '',
+        cookieRaw: '[{"name":"sid","value":"fake","domain":".mail.google.com"},{"name":"sid2","value":"fake","domain":".accounts.google.com"}]',
+      }),
+    });
+
+    expect(plan.initialUrl).toBe('https://mail.google.com/');
+    expect(plan.args).toContain('https://mail.google.com/');
+  });
+
   it('does not add proxy-server when environment has no proxy host or port', () => {
     const plan = buildBrowserLaunchPlan({
       executablePath: 'chrome.exe',
