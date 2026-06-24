@@ -13,6 +13,7 @@
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "package:win": "npm run build && electron-builder --win --x64",
+    "prepare:fingerprint-chromium": "node scripts/prepare-fingerprint-chromium.mjs",
     "lint:security": "node scripts/check-no-sensitive-files.mjs"
   },
   "dependencies": {

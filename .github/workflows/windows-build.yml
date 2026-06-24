@@ -29,6 +29,9 @@ jobs:
           npm test
           npm run lint:security
 
+      - name: Prepare fingerprint Chromium runtime
+        run: npm run prepare:fingerprint-chromium
+
       - name: Build Windows installer
         shell: pwsh
         run: |
