@@ -20,14 +20,28 @@ export type ProxyCheckerOptions = {
   fetchIp?: (proxyUrl: string) => Promise<{ ip: string; proxyUrl: string }>;
 };
 
+const IP_CHECK_ENDPOINTS = [
+  'https://api.ipify.org?format=json',
+  'https://api64.ipify.org?format=json',
+  'https://ipinfo.io/json',
+] as const;
+
 async function defaultFetchIp(proxyUrl: string): Promise<{ ip: string; proxyUrl: string }> {
-  const response = await fetch('https://api.ipify.org?format=json', {
-    dispatcher: new ProxyAgent(proxyUrl),
-  });
-  if (!response.ok) throw new Error(`IP 查询失败：HTTP ${response.status}`);
-  const data = await response.json() as { ip?: string };
-  if (!data.ip) throw new Error('IP 查询返回为空');
-  return { ip: data.ip, proxyUrl };
+  const errors: string[] = [];
+  for (const endpoint of IP_CHECK_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        dispatcher: new ProxyAgent(proxyUrl),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as { ip?: string };
+      if (!data.ip) throw new Error('IP 查询返回为空');
+      return { ip: data.ip, proxyUrl };
+    } catch (error) {
+      errors.push(`${endpoint}: ${(error as Error).message}`);
+    }
+  }
+  throw new Error(`代理无法连通或 IP 查询失败：${errors.join('；')}`);
 }
 
 export class ProxyChecker {

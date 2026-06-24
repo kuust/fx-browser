@@ -10,7 +10,7 @@ export type LocalProxyBridgeStartResult = {
 };
 
 export type LocalProxyBridgeManagerOptions = {
-  anonymizeProxy?: (proxyUrl: string, options?: { port?: number }) => Promise<string>;
+  anonymizeProxy?: (options: string | { url: string; port: number }) => Promise<string>;
   closeAnonymizedProxy?: (proxyUrl: string, closeConnections?: boolean) => Promise<void>;
 };
 
@@ -24,7 +24,7 @@ export function buildUpstreamProxyUrl(plan: BridgeOnlyPlan): string {
 }
 
 export class LocalProxyBridgeManager {
-  private readonly anonymizeProxy: (proxyUrl: string, options?: { port?: number }) => Promise<string>;
+  private readonly anonymizeProxy: (options: string | { url: string; port: number }) => Promise<string>;
   private readonly closeAnonymizedProxy: (proxyUrl: string, closeConnections?: boolean) => Promise<void>;
   private readonly active = new Map<string, string>();
 
@@ -46,7 +46,7 @@ export class LocalProxyBridgeManager {
     }
 
     const upstreamProxyUrl = buildUpstreamProxyUrl(plan);
-    const localProxyUrl = await this.anonymizeProxy(upstreamProxyUrl, { port: plan.localPort });
+    const localProxyUrl = await this.anonymizeProxy({ url: upstreamProxyUrl, port: plan.localPort });
     this.active.set(plan.environmentId, localProxyUrl);
     return {
       environmentId: plan.environmentId,
