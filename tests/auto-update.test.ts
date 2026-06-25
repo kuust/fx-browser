@@ -14,7 +14,8 @@ describe('auto update support', () => {
 
   it('uses electron-updater from the main process instead of only opening a release page', () => {
     expect(packageJson.dependencies).toHaveProperty('electron-updater');
-    expect(mainSource).toContain("from 'electron-updater'");
+    expect(mainSource).toContain("import updater from 'electron-updater';");
+    expect(mainSource).toContain('const { autoUpdater } = updater;');
     expect(mainSource).toContain("ipcMain.handle('fx:download-update'");
     expect(mainSource).toContain("ipcMain.handle('fx:install-update'");
   });
