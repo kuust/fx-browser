@@ -3,6 +3,8 @@ name: Build Windows EXE
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -43,7 +45,11 @@ jobs:
             $PSNativeCommandUseErrorActionPreference = $false
           }
 
-          npm run package:win -- --publish always
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            npm run package:win
+          } else {
+            npm run package:win -- --publish always
+          }
           $buildExit = $LASTEXITCODE
 
           if (Test-Path release) {
