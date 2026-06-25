@@ -1,12 +1,57 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import type { MoreLoginImportReport } from '../shared/import-types.js';
-import type { EnvironmentListItem, SavedImportSummary } from '../shared/store-types.js';
+import type { BrowserEnvDraft, EnvironmentListItem, ProxyListItem, SavedImportSummary } from '../shared/store-types.js';
 
 type StoreFile = {
-  version: 1;
+  version: 2;
   lastImport: SavedImportSummary | null;
   environments: EnvironmentListItem[];
+  proxies: ProxyListItem[];
+  environmentDraft: BrowserEnvDraft;
+};
+
+const DEFAULT_ENVIRONMENT_DRAFT: BrowserEnvDraft = {
+  environmentName: '',
+  browserType: 'ChromeBrowser',
+  operatingSystem: 'Windows',
+  userAgentMode: 'default',
+  userAgent: '',
+  proxyType: 'Socks5',
+  proxyChannel: 'IP2Location',
+  proxyServer: '',
+  proxyAccount: '',
+  proxyPassword: '',
+  refreshUrl: '',
+  ipChangeMonitor: false,
+  proxyMode: 'custom',
+  accountCookie: '',
+  openUrl: '',
+  languageMode: 'ip',
+  timezoneMode: 'ip',
+  geolocationMode: 'ask',
+  resolution: 'default',
+  fontListMode: 'real',
+  fontProtection: 'noise',
+  webrtc: 'disable',
+  canvas: 'noise',
+  webglImage: 'noise',
+  webglInfo: 'ua',
+  webgpu: 'match-webgl',
+  audioContext: 'noise',
+  speechVoices: 'enable',
+  hardwareSettings: 'noise',
+  hardwareConcurrency: '12',
+  deviceMemory: '8',
+  doNotTrack: 'default',
+  battery: 'noise',
+  portScanProtection: 'enable',
+  pageTlsProtocol: 'default',
+  startupArgs: '',
+  cookieIsolation: 'default',
+  multiOpen: 'browser-default',
+  webNotification: 'ask',
+  clipboardProtection: 'browser-default',
 };
 
 const STORE_FILE_NAME = 'fx-browser-store.json';
@@ -17,9 +62,11 @@ function environmentIdFromOrder(importOrder: number): string {
 
 function emptyStore(): StoreFile {
   return {
-    version: 1,
+    version: 2,
     lastImport: null,
     environments: [],
+    proxies: [],
+    environmentDraft: DEFAULT_ENVIRONMENT_DRAFT,
   };
 }
 
@@ -74,9 +121,11 @@ export class FxBrowserStore {
       }));
 
     this.writeStore({
-      version: 1,
+      version: 2,
       lastImport: summary,
       environments,
+      proxies: this.proxiesFromEnvironments(environments),
+      environmentDraft: this.getEnvironmentDraft(),
     });
 
     return summary;
@@ -127,8 +176,69 @@ export class FxBrowserStore {
     return this.readStore().environments.find((item) => item.environmentId === environmentId) ?? null;
   }
 
+  listProxies(): ProxyListItem[] {
+    return this.readStore().proxies.slice().sort((a, b) => a.importOrder - b.importOrder);
+  }
+
+  saveProxies(proxies: ProxyListItem[]): void {
+    const store = this.readStore();
+    store.proxies = proxies.slice().sort((a, b) => a.importOrder - b.importOrder);
+    this.writeStore(store);
+  }
+
+  upsertProxy(proxy: ProxyListItem): void {
+    const store = this.readStore();
+    const index = store.proxies.findIndex((item) => item.proxyId === proxy.proxyId);
+    if (index >= 0) store.proxies[index] = proxy;
+    else store.proxies.push(proxy);
+    store.proxies.sort((a, b) => a.importOrder - b.importOrder);
+    this.writeStore(store);
+  }
+
+  getEnvironmentDraft(): BrowserEnvDraft {
+    return { ...DEFAULT_ENVIRONMENT_DRAFT, ...this.readStore().environmentDraft };
+  }
+
+  saveEnvironmentDraft(draft: BrowserEnvDraft): void {
+    const store = this.readStore();
+    store.environmentDraft = { ...DEFAULT_ENVIRONMENT_DRAFT, ...draft };
+    this.writeStore(store);
+  }
+
+  private proxiesFromEnvironments(environments: EnvironmentListItem[]): ProxyListItem[] {
+    return environments
+      .filter((environment) => environment.proxyHost || environment.proxyRaw)
+      .map<ProxyListItem>((environment) => ({
+        proxyId: `proxy_${String(environment.importOrder).padStart(6, '0')}`,
+        importOrder: environment.importOrder,
+        proxyType: environment.proxyRaw.match(/^(https?|socks5):\/\//i)?.[1]?.toUpperCase() ?? 'SOCKS5',
+        proxyHost: environment.proxyHost,
+        proxyPort: environment.proxyPort,
+        proxyAccount: '',
+        proxyPassword: '',
+        refreshUrl: '',
+        proxyGroup: environment.profileGroup,
+        proxyName: environment.proxyNumber || environment.profileName || environment.environmentId,
+        ipQueryChannel: 'IP2Location',
+        status: 'pending',
+        lastCheckedIp: '',
+        lastCheckedAt: null,
+      }));
+  }
+
   private readStore(): StoreFile {
-    return JSON.parse(readFileSync(this.storePath, 'utf8')) as StoreFile;
+    const raw = JSON.parse(readFileSync(this.storePath, 'utf8')) as Partial<StoreFile> & {
+      version?: number;
+      lastImport: SavedImportSummary | null;
+      environments: EnvironmentListItem[];
+    };
+    return {
+      version: 2,
+      lastImport: raw.lastImport ?? null,
+      environments: raw.environments ?? [],
+      proxies: raw.proxies ?? this.proxiesFromEnvironments(raw.environments ?? []),
+      environmentDraft: { ...DEFAULT_ENVIRONMENT_DRAFT, ...(raw.environmentDraft ?? {}) },
+    };
   }
 
   private writeStore(store: StoreFile): void {
