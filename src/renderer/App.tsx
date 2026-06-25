@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { EnvironmentListItem, SavedImportSummary } from '../shared/store-types';
+import type { BrowserEnvDraft, EnvironmentListItem, ProxyListItem, SavedImportSummary } from '../shared/store-types';
 import './styles/app.css';
 
-type SectionId = 'environments' | 'import' | 'proxy' | 'cookies' | 'settings';
+type SectionId = 'environments' | 'new-environment' | 'import' | 'proxy' | 'sync' | 'cookies' | 'settings';
 
 type FilterStatus = 'all' | 'running' | 'stopped' | 'cookie-pending';
 
@@ -39,6 +39,84 @@ function statusClass(env: EnvironmentListItem) {
   return 'pill';
 }
 
+const defaultDraft: BrowserEnvDraft = {
+  environmentName: '',
+  browserType: 'ChromeBrowser',
+  operatingSystem: 'Windows',
+  userAgentMode: 'default',
+  userAgent: '',
+  proxyType: 'Socks5',
+  proxyChannel: 'IP2Location',
+  proxyServer: '',
+  proxyAccount: '',
+  proxyPassword: '',
+  refreshUrl: '',
+  ipChangeMonitor: false,
+  proxyMode: 'custom',
+  accountCookie: '',
+  openUrl: '',
+  languageMode: 'ip',
+  timezoneMode: 'ip',
+  geolocationMode: 'ask',
+  resolution: 'default',
+  fontListMode: 'real',
+  fontProtection: 'noise',
+  webrtc: 'disable',
+  canvas: 'noise',
+  webglImage: 'noise',
+  webglInfo: 'ua',
+  webgpu: 'match-webgl',
+  audioContext: 'noise',
+  speechVoices: 'enable',
+  hardwareSettings: 'noise',
+  hardwareConcurrency: '12',
+  deviceMemory: '8',
+  doNotTrack: 'default',
+  battery: 'noise',
+  portScanProtection: 'enable',
+  pageTlsProtocol: 'default',
+  startupArgs: '',
+  cookieIsolation: 'default',
+  multiOpen: 'browser-default',
+  webNotification: 'ask',
+  clipboardProtection: 'browser-default',
+};
+
+function getBridge() {
+  const api = window.fxBrowser ?? window.electronAPI;
+  if (!api?.importMoreLoginFile) {
+    throw new Error('Electron 预加载桥接未就绪，请安装/运行最新版本后重试。');
+  }
+  return api;
+}
+
+function proxyFromText(raw: string, order: number): ProxyListItem | null {
+  const value = raw.trim();
+  if (!value) return null;
+  const withScheme = /^\w+:\/\//.test(value) ? value : `socks5://${value}`;
+  try {
+    const url = new URL(withScheme);
+    return {
+      proxyId: `manual_${Date.now()}_${order}`,
+      importOrder: order,
+      proxyType: url.protocol.replace(':', '').toUpperCase(),
+      proxyHost: url.hostname,
+      proxyPort: url.port ? Number(url.port) : null,
+      proxyAccount: decodeURIComponent(url.username),
+      proxyPassword: decodeURIComponent(url.password),
+      refreshUrl: '',
+      proxyGroup: '手动添加',
+      proxyName: url.hostname || value,
+      ipQueryChannel: 'IP2Location',
+      status: 'pending',
+      lastCheckedIp: '',
+      lastCheckedAt: null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('environments');
   const [environments, setEnvironments] = useState<EnvironmentListItem[]>([]);
@@ -49,14 +127,23 @@ function App() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [proxies, setProxies] = useState<ProxyListItem[]>([]);
+  const [draft, setDraft] = useState<BrowserEnvDraft>(defaultDraft);
+  const [bulkProxyText, setBulkProxyText] = useState('');
+  const [singleProxyText, setSingleProxyText] = useState('');
+  const [updateInfo, setUpdateInfo] = useState<string>('');
 
   async function refresh() {
-    const [list, lastSummary] = await Promise.all([
-      window.fxBrowser.listEnvironments(),
-      window.fxBrowser.getLastImportSummary(),
+    const [list, lastSummary, proxyList, envDraft] = await Promise.all([
+      getBridge().listEnvironments(),
+      getBridge().getLastImportSummary(),
+      getBridge().listProxies(),
+      getBridge().getEnvironmentDraft(),
     ]);
     setEnvironments(list);
     setSummary(lastSummary);
+    setProxies(proxyList);
+    setDraft(envDraft);
     if (list.length > 0) setMessage(`已加载 ${list.length} 个环境，默认按 MoreLogin 导出顺序排列`);
   }
 
@@ -69,7 +156,7 @@ function App() {
     setActiveSection('import');
     setMessage('请选择 MoreLogin 导出的 export_profile.txt');
     try {
-      const result = await window.fxBrowser.importMoreLoginFile();
+      const result = await getBridge().importMoreLoginFile();
       if (result.canceled) {
         setMessage('已取消导入');
         return;
@@ -88,7 +175,7 @@ function App() {
   async function handleStart(environmentId: string) {
     setLoading(true);
     try {
-      const result = await window.fxBrowser.startEnvironment(environmentId);
+      const result = await getBridge().startEnvironment(environmentId);
       setEnvironments(result.environments);
       setMessage(result.status === 'already-running' ? `环境 ${environmentId} 已在运行` : `已启动环境 ${environmentId}`);
     } catch (error) {
@@ -101,7 +188,7 @@ function App() {
   async function handleStop(environmentId: string) {
     setLoading(true);
     try {
-      const result = await window.fxBrowser.stopEnvironment(environmentId);
+      const result = await getBridge().stopEnvironment(environmentId);
       setEnvironments(result.environments);
       setMessage(result.status === 'not-running' ? `环境 ${environmentId} 未在运行` : `已停止环境 ${environmentId}`);
     } catch (error) {
@@ -122,7 +209,7 @@ function App() {
     let started = 0;
     try {
       for (const env of targets) {
-        const result = await window.fxBrowser.startEnvironment(env.environmentId);
+        const result = await getBridge().startEnvironment(env.environmentId);
         latest = result.environments;
         started += result.status === 'started' || result.status === 'already-running' ? 1 : 0;
       }
@@ -140,7 +227,7 @@ function App() {
     setActiveSection('proxy');
     setProxyResults((prev) => ({ ...prev, [environmentId]: '检测中...' }));
     try {
-      const result = await window.fxBrowser.checkProxy(environmentId);
+      const result = await getBridge().checkProxy(environmentId);
       const text = result.status === 'ok'
         ? `成功 ${result.ip ?? ''}`
         : result.status === 'skipped'
@@ -160,11 +247,63 @@ function App() {
   async function handleResetCookieImport(environmentId: string) {
     setLoading(true);
     try {
-      const result = await window.fxBrowser.resetCookieImport(environmentId);
+      const result = await getBridge().resetCookieImport(environmentId);
       setEnvironments(result.environments);
       setMessage(`已将 ${environmentId} 的 Cookie 状态重置为待导入，下次启动会重新注入一次`);
     } catch (error) {
       setMessage(`重置 Cookie 状态失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSaveDraft() {
+    setLoading(true);
+    try {
+      const saved = await getBridge().saveEnvironmentDraft(draft);
+      setDraft(saved);
+      setMessage(`新建环境配置已保存：${saved.environmentName || '未命名环境'}`);
+    } catch (error) {
+      setMessage(`保存新建环境失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAddSingleProxy() {
+    const proxy = proxyFromText(singleProxyText, proxies.length + 1);
+    if (!proxy) {
+      setMessage('代理格式无效，请输入 host:port 或 scheme://user:pass@host:port');
+      return;
+    }
+    const next = [...proxies, proxy];
+    setProxies(await getBridge().saveProxies(next));
+    setSingleProxyText('');
+    setMessage(`已添加代理：${proxy.proxyHost}:${proxy.proxyPort ?? ''}`);
+  }
+
+  async function handleAddBulkProxies() {
+    const parsed = bulkProxyText.split(/\r?\n/)
+      .map((line, index) => proxyFromText(line, proxies.length + index + 1))
+      .filter((item): item is ProxyListItem => Boolean(item));
+    if (parsed.length === 0) {
+      setMessage('没有可导入的代理，请每行输入一个代理');
+      return;
+    }
+    const next = [...proxies, ...parsed];
+    setProxies(await getBridge().saveProxies(next));
+    setBulkProxyText('');
+    setMessage(`已批量添加 ${parsed.length} 个代理`);
+  }
+
+  async function handleCheckUpdates() {
+    setLoading(true);
+    try {
+      const result = await getBridge().checkForUpdates();
+      setUpdateInfo(result.message);
+      setMessage(result.message);
+    } catch (error) {
+      setMessage(`检查更新失败：${(error as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -225,8 +364,10 @@ function App() {
         </div>
         <nav>
           <button className={navClass('environments')} onClick={() => setActiveSection('environments')}><span className="nav-icon">▦</span><span>环境管理</span><em>{environments.length}</em></button>
+          <button className={navClass('new-environment')} onClick={() => setActiveSection('new-environment')}><span className="nav-icon">＋</span><span>新建环境</span></button>
           <button className={navClass('import')} onClick={() => setActiveSection('import')}><span className="nav-icon">⇪</span><span>MoreLogin 导入</span></button>
           <button className={navClass('proxy')} onClick={() => setActiveSection('proxy')}><span className="nav-icon">◎</span><span>代理检测</span><em>{proxyPendingCount}</em></button>
+          <button className={navClass('sync')} onClick={() => setActiveSection('sync')}><span className="nav-icon">⇄</span><span>同步器</span></button>
           <button className={navClass('cookies')} onClick={() => setActiveSection('cookies')}><span className="nav-icon">◒</span><span>Cookie 状态</span><em>{xReadyCount}</em></button>
           <button className={navClass('settings')} onClick={() => setActiveSection('settings')}><span className="nav-icon">⚙</span><span>设置</span></button>
         </nav>
@@ -246,6 +387,7 @@ function App() {
           <div className="top-actions">
             <button className="ghost" onClick={() => void refresh()} disabled={loading}>刷新</button>
             <button className="ghost" onClick={() => setActiveSection('proxy')} disabled={loading}>批量检测</button>
+            <button className="ghost" onClick={() => setActiveSection('new-environment')} disabled={loading}>新建环境</button>
             <button className="secondary" onClick={() => void handleBatchStart()} disabled={loading || selectedCount === 0}>打开选中{selectedCount ? `(${selectedCount})` : ''}</button>
             <button className="primary" onClick={handleImport} disabled={loading}>
               {loading ? '处理中...' : '+ 导入 MoreLogin TXT'}
@@ -276,6 +418,19 @@ function App() {
           </article>
         </section>
 
+        {activeSection === 'new-environment' && (
+          <section className="panel info-panel">
+            <div className="panel-title"><h2>新建环境</h2><span>Windows 指纹环境草稿</span></div>
+            <div className="panel-body form-grid">
+              <label>环境名称<input value={draft.environmentName} onChange={(e) => setDraft({ ...draft, environmentName: e.target.value })} placeholder="例如：账号 A / 店铺 01" /></label>
+              <label>打开网址<input value={draft.openUrl} onChange={(e) => setDraft({ ...draft, openUrl: e.target.value })} placeholder="https://x.com" /></label>
+              <label>代理服务器<input value={draft.proxyServer} onChange={(e) => setDraft({ ...draft, proxyServer: e.target.value })} placeholder="socks5://user:pass@host:port" /></label>
+              <label>账号 Cookie<textarea value={draft.accountCookie} onChange={(e) => setDraft({ ...draft, accountCookie: e.target.value })} placeholder="可粘贴 cookie 原文" /></label>
+              <button className="primary" onClick={() => void handleSaveDraft()} disabled={loading}>保存新建环境配置</button>
+            </div>
+          </section>
+        )}
+
         {activeSection === 'import' && (
           <section className="panel info-panel">
             <div className="panel-title"><h2>MoreLogin 导入</h2><span>{summary ? `上次来源：${summary.sourceFileName}` : '未导入'}</span></div>
@@ -288,9 +443,24 @@ function App() {
 
         {activeSection === 'proxy' && (
           <section className="panel info-panel">
-            <div className="panel-title"><h2>代理检测</h2><span>待检测：{proxyPendingCount}</span></div>
+            <div className="panel-title"><h2>代理管理 / 检测</h2><span>已保存代理：{proxies.length}</span></div>
+            <div className="panel-body form-grid">
+              <label>单个添加<input value={singleProxyText} onChange={(e) => setSingleProxyText(e.target.value)} placeholder="host:port 或 socks5://user:pass@host:port" /></label>
+              <button className="primary" onClick={() => void handleAddSingleProxy()} disabled={loading}>添加单个代理</button>
+              <label>批量添加<textarea value={bulkProxyText} onChange={(e) => setBulkProxyText(e.target.value)} placeholder="每行一个代理" /></label>
+              <button className="secondary" onClick={() => void handleAddBulkProxies()} disabled={loading}>批量添加代理</button>
+              <p>环境列表每行的“检测”用于检测该环境代理出口 IP；这里管理所有导入/手动添加的代理。</p>
+              <div className="proxy-list">{proxies.slice(0, 8).map((proxy) => <span className="tag" key={proxy.proxyId}>{proxy.proxyHost}:{proxy.proxyPort ?? ''}</span>)}</div>
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'sync' && (
+          <section className="panel info-panel">
+            <div className="panel-title"><h2>同步器</h2><span>本地同步状态</span></div>
             <div className="panel-body">
-              <p>在环境列表每行点击“检测”即可检测该环境的代理出口 IP。检测结果会显示在代理列下方。</p>
+              <p>同步器入口已接通。当前个人 EXE 版本先做本地环境、代理、Cookie 状态同步；后续可接云端同步。</p>
+              <button className="secondary" onClick={() => void refresh()} disabled={loading}>同步本地数据</button>
             </div>
           </section>
         )}
@@ -306,9 +476,14 @@ function App() {
 
         {activeSection === 'settings' && (
           <section className="panel info-panel">
-            <div className="panel-title"><h2>设置</h2><span>运行参数</span></div>
+            <div className="panel-title"><h2>设置</h2><span>运行参数 / 更新</span></div>
             <div className="panel-body">
-              <p>设置入口已可点击。当前版本优先使用内置/配置的 fingerprint Chromium 内核，找不到时回退系统 Chrome/Edge；代理默认走本地桥接 → Clash → 环境代理。</p>
+              <p>当前版本优先使用内置/配置的 fingerprint Chromium 内核，找不到时回退系统 Chrome/Edge；代理默认走本地桥接 → Clash → 环境代理。</p>
+              <div className="actions">
+                <button className="primary" onClick={() => void handleCheckUpdates()} disabled={loading}>检查更新版本</button>
+                <button className="secondary" onClick={() => void getBridge().openUpdatesPage()} disabled={loading}>打开下载页面</button>
+              </div>
+              <p>{updateInfo || '点击“检查更新版本”获取 GitHub Release 最新版本。'}</p>
             </div>
           </section>
         )}

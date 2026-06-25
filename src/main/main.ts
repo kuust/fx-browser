@@ -1,5 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { FxBrowserStore } from './fx-store.js';
 import { importMoreLoginFile } from './import-morelogin-file.js';
@@ -123,6 +124,51 @@ ipcMain.handle('fx:check-proxy', async (_event, environmentId: string) => {
 ipcMain.handle('fx:reset-cookie-import', (_event, environmentId: string) => {
   getStore().resetCookieImport(environmentId);
   return { environmentId, environments: getStore().listEnvironments() };
+});
+
+ipcMain.handle('fx:list-proxies', () => {
+  return getStore().listProxies();
+});
+
+ipcMain.handle('fx:save-proxies', (_event, proxies) => {
+  getStore().saveProxies(proxies);
+  return getStore().listProxies();
+});
+
+ipcMain.handle('fx:get-environment-draft', () => {
+  return getStore().getEnvironmentDraft();
+});
+
+ipcMain.handle('fx:save-environment-draft', (_event, draft) => {
+  getStore().saveEnvironmentDraft(draft);
+  return getStore().getEnvironmentDraft();
+});
+
+ipcMain.handle('fx:check-for-updates', async () => {
+  const packageJsonPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'app.asar', 'package.json')
+    : path.join(__dirname, '../../package.json');
+  let currentVersion = app.getVersion();
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version?: string };
+    currentVersion = packageJson.version ?? currentVersion;
+  } catch {
+    // Keep Electron app version fallback.
+  }
+  const releasesUrl = 'https://github.com/kuust/fx-browser/releases/latest';
+  return {
+    currentVersion,
+    latestVersion: null,
+    hasUpdate: null,
+    releasesUrl,
+    message: '已准备打开 GitHub Releases。当前版本先支持一键跳转下载，后续可升级为静默下载安装。',
+  };
+});
+
+ipcMain.handle('fx:open-updates-page', async () => {
+  const releasesUrl = 'https://github.com/kuust/fx-browser/releases/latest';
+  await shell.openExternal(releasesUrl);
+  return { opened: true, releasesUrl };
 });
 
 app.whenReady().then(() => {
