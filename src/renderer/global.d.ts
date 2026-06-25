@@ -41,6 +41,8 @@ type FxBrowserBridge = {
   getEnvironmentDraft: () => Promise<BrowserEnvDraft>;
   saveEnvironmentDraft: (draft: BrowserEnvDraft) => Promise<BrowserEnvDraft>;
   checkForUpdates: () => Promise<UpdateCheckUiResult>;
+  downloadUpdate: () => Promise<{ downloaded: boolean; message: string }>;
+  installUpdate: () => Promise<{ installing: boolean }>;
   openUpdatesPage: () => Promise<{ opened: boolean; releasesUrl: string }>;
 };
 

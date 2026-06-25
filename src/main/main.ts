@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -144,25 +145,54 @@ ipcMain.handle('fx:save-environment-draft', (_event, draft) => {
   return getStore().getEnvironmentDraft();
 });
 
-ipcMain.handle('fx:check-for-updates', async () => {
+function currentVersion(): string {
   const packageJsonPath = app.isPackaged
     ? path.join(process.resourcesPath, 'app.asar', 'package.json')
     : path.join(__dirname, '../../package.json');
-  let currentVersion = app.getVersion();
   try {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version?: string };
-    currentVersion = packageJson.version ?? currentVersion;
+    return packageJson.version ?? app.getVersion();
   } catch {
-    // Keep Electron app version fallback.
+    return app.getVersion();
   }
+}
+
+ipcMain.handle('fx:check-for-updates', async () => {
   const releasesUrl = 'https://github.com/kuust/fx-browser/releases/latest';
+  if (!app.isPackaged) {
+    return {
+      currentVersion: currentVersion(),
+      latestVersion: null,
+      hasUpdate: null,
+      releasesUrl,
+      message: '开发模式不会自动更新；打包安装版可在客户端内检查、下载并安装更新。',
+    };
+  }
+
+  const result = await autoUpdater.checkForUpdates();
+  const latestVersion = result?.updateInfo?.version ?? null;
   return {
-    currentVersion,
-    latestVersion: null,
-    hasUpdate: null,
+    currentVersion: currentVersion(),
+    latestVersion,
+    hasUpdate: Boolean(latestVersion && latestVersion !== currentVersion()),
     releasesUrl,
-    message: '已准备打开 GitHub Releases。当前版本先支持一键跳转下载，后续可升级为静默下载安装。',
+    message: latestVersion && latestVersion !== currentVersion()
+      ? `发现新版本 ${latestVersion}，可以直接下载并安装。`
+      : '当前已经是最新版本。',
   };
+});
+
+ipcMain.handle('fx:download-update', async () => {
+  if (!app.isPackaged) {
+    return { downloaded: false, message: '开发模式不能下载更新，请使用打包安装版。' };
+  }
+  await autoUpdater.downloadUpdate();
+  return { downloaded: true, message: '更新已下载完成，点击“安装并重启”完成升级。' };
+});
+
+ipcMain.handle('fx:install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+  return { installing: true };
 });
 
 ipcMain.handle('fx:open-updates-page', async () => {

@@ -1,6 +1,6 @@
 {
   "name": "fx-browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "FX Browser - Windows personal browser environment manager with MoreLogin import support.",
   "private": true,
   "main": "dist-electron/main/main.js",
@@ -17,6 +17,7 @@
     "lint:security": "node scripts/check-no-sensitive-files.mjs"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "proxy-chain": "^3.0.0",
     "react": "latest",
     "react-dom": "latest",

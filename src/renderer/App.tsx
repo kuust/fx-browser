@@ -309,6 +309,30 @@ function App() {
     }
   }
 
+  async function handleDownloadUpdate() {
+    setLoading(true);
+    try {
+      const result = await getBridge().downloadUpdate();
+      setUpdateInfo(result.message);
+      setMessage(result.message);
+    } catch (error) {
+      setMessage(`下载更新失败：${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleInstallUpdate() {
+    setLoading(true);
+    try {
+      await getBridge().installUpdate();
+      setMessage('正在安装更新并重启 FX Browser...');
+    } catch (error) {
+      setMessage(`安装更新失败：${(error as Error).message}`);
+      setLoading(false);
+    }
+  }
+
   const groupedCount = useMemo(() => {
     const groups = new Set(environments.map((item) => item.profileGroup || '未分组'));
     return groups.size;
@@ -481,7 +505,9 @@ function App() {
               <p>当前版本优先使用内置/配置的 fingerprint Chromium 内核，找不到时回退系统 Chrome/Edge；代理默认走本地桥接 → Clash → 环境代理。</p>
               <div className="actions">
                 <button className="primary" onClick={() => void handleCheckUpdates()} disabled={loading}>检查更新版本</button>
-                <button className="secondary" onClick={() => void getBridge().openUpdatesPage()} disabled={loading}>打开下载页面</button>
+                <button className="secondary" onClick={() => void handleDownloadUpdate()} disabled={loading}>下载并安装更新</button>
+                <button className="secondary" onClick={() => void handleInstallUpdate()} disabled={loading}>安装并重启</button>
+                <button className="ghost" onClick={() => void getBridge().openUpdatesPage()} disabled={loading}>打开下载页面</button>
               </div>
               <p>{updateInfo || '点击“检查更新版本”获取 GitHub Release 最新版本。'}</p>
             </div>

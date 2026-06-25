@@ -56,6 +56,21 @@ describe('buildBrowserLaunchPlan', () => {
     expect(plan.args).toContain('--disable-non-proxied-udp');
   });
 
+  it('opens X/Twitter profiles on x.com so imported Twitter cookies are visible immediately', () => {
+    const plan = buildBrowserLaunchPlan({
+      executablePath: 'chrome.exe',
+      appUserDataDir: 'C:/FX Browser',
+      environment: makeEnv({
+        platform: 'Twitter',
+        platformDomain: 'https://x.com',
+        cookieRaw: '[{"name":"auth_token","value":"fake","domain":".twitter.com"},{"name":"ct0","value":"fake","domain":".twitter.com"}]',
+      }),
+    });
+
+    expect(plan.initialUrl).toBe('https://x.com/');
+    expect(plan.args.at(-1)).toBe('https://x.com/');
+  });
+
   it('opens the FX network check start page instead of a target website by default', () => {
     const plan = buildBrowserLaunchPlan({
       executablePath: 'chrome.exe',
