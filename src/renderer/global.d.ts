@@ -1,4 +1,4 @@
-import type { EnvironmentListItem, SavedImportSummary } from '../shared/store-types';
+import type { BrowserEnvDraft, EnvironmentListItem, ProxyListItem, SavedImportSummary } from '../shared/store-types';
 
 type ImportMoreLoginUiResult =
   | { canceled: true }
@@ -20,6 +20,14 @@ type ProxyCheckUiResult = {
   message: string;
 };
 
+type UpdateCheckUiResult = {
+  currentVersion: string;
+  latestVersion: string | null;
+  hasUpdate: boolean | null;
+  releasesUrl: string;
+  message: string;
+};
+
 type FxBrowserBridge = {
   listEnvironments: () => Promise<EnvironmentListItem[]>;
   getLastImportSummary: () => Promise<SavedImportSummary | null>;
@@ -28,6 +36,12 @@ type FxBrowserBridge = {
   stopEnvironment: (environmentId: string) => Promise<EnvironmentActionResult>;
   checkProxy: (environmentId: string) => Promise<ProxyCheckUiResult>;
   resetCookieImport: (environmentId: string) => Promise<{ environmentId: string; environments: EnvironmentListItem[] }>;
+  listProxies: () => Promise<ProxyListItem[]>;
+  saveProxies: (proxies: ProxyListItem[]) => Promise<ProxyListItem[]>;
+  getEnvironmentDraft: () => Promise<BrowserEnvDraft>;
+  saveEnvironmentDraft: (draft: BrowserEnvDraft) => Promise<BrowserEnvDraft>;
+  checkForUpdates: () => Promise<UpdateCheckUiResult>;
+  openUpdatesPage: () => Promise<{ opened: boolean; releasesUrl: string }>;
 };
 
 declare global {
