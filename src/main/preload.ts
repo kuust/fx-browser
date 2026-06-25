@@ -13,6 +13,8 @@ const bridgeApi = {
   getEnvironmentDraft: () => ipcRenderer.invoke('fx:get-environment-draft'),
   saveEnvironmentDraft: (draft: unknown) => ipcRenderer.invoke('fx:save-environment-draft', draft),
   checkForUpdates: () => ipcRenderer.invoke('fx:check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('fx:download-update'),
+  installUpdate: () => ipcRenderer.invoke('fx:install-update'),
   openUpdatesPage: () => ipcRenderer.invoke('fx:open-updates-page'),
 };
 
