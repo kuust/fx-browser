@@ -109,7 +109,7 @@ h1 { margin-bottom: 7px; font-size: 30px; line-height: 1; letter-spacing: -.04em
 .table { display: grid; overflow-x: auto; }
 .row {
   display: grid;
-  grid-template-columns: 64px minmax(220px, 1.35fr) 112px minmax(190px, 1.05fr) minmax(210px, 1.25fr) 120px 92px 190px;
+  grid-template-columns: 42px 64px minmax(220px, 1.35fr) 112px minmax(190px, 1.05fr) minmax(210px, 1.25fr) 120px 92px 190px;
   padding: 14px 18px;
   border-bottom: 1px solid #edf0f5;
   align-items: center;
@@ -149,6 +149,12 @@ h1 { margin-bottom: 7px; font-size: 30px; line-height: 1; letter-spacing: -.04em
 .pill.warning { background: #fffaeb; color: #b54708; }
 .pill.danger { background: #fef3f2; color: #b42318; }
 .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
 
 @media (max-width: 1180px) {
   .app-shell { grid-template-columns: 84px 1fr; }
