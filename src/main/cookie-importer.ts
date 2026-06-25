@@ -50,6 +50,18 @@ function expiresToUnixSeconds(value: unknown): number | undefined {
   return Number.isFinite(millis) ? Math.floor(millis / 1000) : undefined;
 }
 
+function isTwitterLikeDomain(domain: string | undefined): boolean {
+  if (!domain) return false;
+  return /(^|\.)twitter\.com$/i.test(domain.replace(/^\.+/, '')) || /(^|\.)x\.com$/i.test(domain.replace(/^\.+/, ''));
+}
+
+function shouldMirrorTwitterCookie(cookie: MoreLoginCookie, environment: EnvironmentListItem): boolean {
+  const cookieName = cookie.name.toLowerCase();
+  const platformText = `${environment.platform} ${environment.platformDomain}`.toLowerCase();
+  return ['auth_token', 'ct0', 'twid'].includes(cookieName)
+    && (platformText.includes('twitter') || platformText.includes('x.com') || isTwitterLikeDomain(cookie.domain));
+}
+
 function normalizePlatformUrl(platformDomain: string): string | undefined {
   const trimmed = platformDomain.trim();
   if (!trimmed) return undefined;
@@ -72,7 +84,7 @@ export function buildCdpCookies(environment: EnvironmentListItem): CdpCookie[] {
 
   return parsed
     .filter((cookie) => cookie && typeof cookie.name === 'string' && typeof cookie.value === 'string')
-    .map((cookie) => {
+    .flatMap((cookie) => {
       const cdpCookie: CdpCookie = {
         name: cookie.name,
         value: cookie.value,
@@ -93,7 +105,14 @@ export function buildCdpCookies(environment: EnvironmentListItem): CdpCookie[] {
       const sameSite = normalizeSameSite(cookie.same_site);
       if (sameSite) cdpCookie.sameSite = sameSite;
 
-      return cdpCookie;
+      const cookies = [cdpCookie];
+      if (cdpCookie.domain && shouldMirrorTwitterCookie(cookie, environment)) {
+        const normalizedDomain = cdpCookie.domain.replace(/^\.+/, '').toLowerCase();
+        const mirrorDomain = normalizedDomain.endsWith('twitter.com') ? '.x.com' : '.twitter.com';
+        if (cdpCookie.domain.toLowerCase() !== mirrorDomain) cookies.push({ ...cdpCookie, domain: mirrorDomain });
+      }
+
+      return cookies;
     })
     .filter((cookie) => cookie.domain || cookie.url);
 }

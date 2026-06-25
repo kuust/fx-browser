@@ -65,4 +65,19 @@ describe('cookie importer', () => {
       url: 'https://accounts.google.com/',
     });
   });
+
+  it('mirrors Twitter login cookies between twitter.com and x.com for imported X sessions', () => {
+    const cookies = buildCdpCookies(makeEnv({
+      platform: 'Twitter',
+      platformDomain: 'https://x.com',
+      cookieCount: 2,
+      cookieRaw: '[{"name":"auth_token","value":"token","domain":".twitter.com","path":"/","secure":true,"http_only":true,"same_site":"None"},{"name":"ct0","value":"csrf","domain":".twitter.com","path":"/","secure":true,"same_site":"Lax"}]',
+    }));
+
+    const authDomains = cookies.filter((cookie) => cookie.name === 'auth_token').map((cookie) => cookie.domain).sort();
+    const ct0Domains = cookies.filter((cookie) => cookie.name === 'ct0').map((cookie) => cookie.domain).sort();
+
+    expect(authDomains).toEqual(['.twitter.com', '.x.com']);
+    expect(ct0Domains).toEqual(['.twitter.com', '.x.com']);
+  });
 });
